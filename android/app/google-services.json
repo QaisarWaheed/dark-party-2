@@ -1,0 +1,194 @@
+{
+  "project_info": {
+    "project_number": "828536498276",
+    "project_id": "shaheen-star-690f3",
+    "storage_bucket": "shaheen-star-690f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:828536498276:android:3174b8422fcab1e8c35771",
+        "android_client_info": {
+          "package_name": "com.skylogicsolutions.loveparty"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "828536498276-0sl2vrgur7q12vro27m700kkhcugotom.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "d5c340b42eee5b1d72b2a19da7eab95a60f87501"
+          }
+        },
+        {
+          "client_id": "828536498276-5njk3id0l1249l00f881i3i1vucn1qvs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "a36571d74f426ccfc729e68bec793b9ac8ecdd0f"
+          }
+        },
+        {
+          "client_id": "828536498276-hulokor9doigkpn910mgr3in87omm3i8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "206e5a2360c77374cc1e6ca41347995890c95847"
+          }
+        },
+        {
+          "client_id": "828536498276-ispf54tnc8e78sghu097uhamcbbjfbjd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "139ec6db8c2eac0eb69b53096aca49ae1ce9c6ce"
+          }
+        },
+        {
+          "client_id": "828536498276-q8v1g0vrm5j15d482skrlrla5mjtb5a9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "316e30b7b751d09d3cd224cb2bdfb26145007420"
+          }
+        },
+        {
+          "client_id": "828536498276-t5vki74t8i1uulbdjv6nrf792amo93he.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.loveparty",
+            "certificate_hash": "94f3bc008832022a75369c7f1b68c96e0280b977"
+          }
+        },
+        {
+          "client_id": "828536498276-494l5kh303de7hk640rkeo4nlh9kc6g4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXit5gBx0P_ddcoTnssQ6j_LaDsJqgjrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "828536498276-494l5kh303de7hk640rkeo4nlh9kc6g4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "828536498276-l1b99mk1996fub1iegdnkd1pq293g78t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.shaheenStarApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:828536498276:android:2e02dcfcc71a0996c35771",
+        "android_client_info": {
+          "package_name": "com.skylogicsolutions.shaheenstar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "828536498276-2l78p5hrij4vph954da8s3bh2o717gjs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "139ec6db8c2eac0eb69b53096aca49ae1ce9c6ce"
+          }
+        },
+        {
+          "client_id": "828536498276-5a034gubti4n881ubjoulbdc8v3fnvam.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "94f3bc008832022a75369c7f1b68c96e0280b977"
+          }
+        },
+        {
+          "client_id": "828536498276-80pd1lb8u25d6m6bob2jjh3keahd44oa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "d5c340b42eee5b1d72b2a19da7eab95a60f87501"
+          }
+        },
+        {
+          "client_id": "828536498276-af8nqppfjden3cukct8a9oc8kq17cu9u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "a4d068d4952e4a7b89366f34132561dc9fc67a4e"
+          }
+        },
+        {
+          "client_id": "828536498276-g4prr88sned9sep8osc9imctacqqss17.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "66c0d12c78137ae14dacf6c6db94dcc0396399da"
+          }
+        },
+        {
+          "client_id": "828536498276-gr67265c6ggq1vtd4j1bf5bm53tf3jh7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "206e5a2360c77374cc1e6ca41347995890c95847"
+          }
+        },
+        {
+          "client_id": "828536498276-rs5mcnq12antlsipk31dvclfbeap4j3u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "316e30b7b751d09d3cd224cb2bdfb26145007420"
+          }
+        },
+        {
+          "client_id": "828536498276-uivdr4vef6v2lg2nf5kbhnmjaq43sh9r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skylogicsolutions.shaheenstar",
+            "certificate_hash": "a36571d74f426ccfc729e68bec793b9ac8ecdd0f"
+          }
+        },
+        {
+          "client_id": "828536498276-494l5kh303de7hk640rkeo4nlh9kc6g4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXit5gBx0P_ddcoTnssQ6j_LaDsJqgjrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "828536498276-494l5kh303de7hk640rkeo4nlh9kc6g4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "828536498276-l1b99mk1996fub1iegdnkd1pq293g78t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.shaheenStarApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

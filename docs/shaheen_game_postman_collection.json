@@ -1,0 +1,99 @@
+{
+  "info": {
+    "_postman_id": "shaheen-game-apis-2026",
+    "name": "Shaheen Game APIs (BAISHUN-compatible)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Change Balance (BAISHUN)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"app_id\":21397507,\n  \"user_id\":\"{user_id}\",\n  \"ss_token\":\"{ss_token}\",\n  \"currency_diff\": -100,\n  \"game_id\":1006,\n  \"room_id\":\"room_123\",\n  \"game_round_id\":\"<game_round_id>\",\n  \"order_id\":\"<unique_order_id>\",\n  \"change_time_at\":1638845715,\n  \"diff_msg\":\"bet\",\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/change_balance.php", "host": ["{{URL}}"], "path": ["change_balance.php"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Get SSToken (exchange code)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"app_id\":21397507,\n  \"user_id\":\"{user_id}\",\n  \"code\":\"{one_time_code}\",\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/get_sstoken.php", "host": ["{{URL}}"], "path": ["get_sstoken.php"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Get User Info (BAISHUN request)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"app_id\":21397507,\n  \"user_id\":\"{user_id}\",\n  \"ss_token\":\"{ss_token}\",\n  \"game_id\":1006,\n  \"client_ip\":\"<optional_ip>\",\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/get_user_info.php", "host": ["{{URL}}"], "path": ["get_user_info.php"] }
+      },
+      "response": []
+    },
+    {
+      "name": "One Game Info (client -> server)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"app_channel\":\"{app_channel}\",\n  \"app_id\":21397507,\n  \"game_id\":1006,\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/one_game_info.php", "host": ["{{URL}}"], "path": ["one_game_info.php"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Gamelist (client -> server)",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"game_list_type\":3,\n  \"app_channel\":\"{app_channel}\",\n  \"app_id\":21397507,\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/gamelist.php", "host": ["{{URL}}"], "path": ["gamelist.php"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Balance Info (v2) - game balance query",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\":\"{user_id}\",\n  \"app_channel\":\"{app_channel}\",\n  \"app_id\":21397507,\n  \"signature_nonce\":\"<nonce>\",\n  \"timestamp\":<unix_seconds>,\n  \"signature\":\"<md5_lower_hex>\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{URL}}/v2/api/balance_info.php", "host": ["{{URL}}"], "path": ["v2","api","balance_info.php"] }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "URL", "value": "https://game-center-test.jieyou.shop" },
+    { "key": "app_channel", "value": "mesh" }
+  ]
+}

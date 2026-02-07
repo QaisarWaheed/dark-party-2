@@ -1,0 +1,11 @@
+---
+description: Always restart Flutter server when user asks or after relevant changes
+alwaysApply: true
+---
+
+# Flutter server restart (lazmi)
+
+- **User preference:** Server restart karna **har bar lazmi hai** (mandatory every time).
+- Whenever the user asks to restart the server, or says "server restart", "restart karo", or similar, **always run** `flutter run` from the project root (`shaheen_start_app-main`) in the background so the app runs on the emulator and logs stream.
+- After making code changes that affect the running app (e.g. API, providers, screens), **offer to or run** a server restart so the user can test with a fresh run.
+- Run from: `shaheen_start_app-main` directory (the Flutter app folder). Use background execution so logs keep streaming.
