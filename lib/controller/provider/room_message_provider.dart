@@ -476,4 +476,34 @@ class RoomMessageProvider with ChangeNotifier {
     notifyListeners();
     print("✅ Welcome message added to chat");
   }
+
+  /// Add Lucky gift congratulations message to room chat
+  void addLuckyCongratulationsMessage({
+    required String roomId,
+    required String senderName,
+    required int multiplier,
+    required double reward,
+    String? senderUserId,
+    String? senderProfileUrl,
+  }) {
+    final message = 'Wow, congratulations to $senderName for getting ${multiplier}x in lucky gift event';
+    final model = senderUserId != null && senderUserId.isNotEmpty && senderUserId != 'system'
+        ? SendMessageRoomModel(
+            userId: senderUserId,
+            roomId: roomId,
+            message: message,
+            userName: senderName,
+            profileUrl: senderProfileUrl,
+            timestamp: DateTime.now().toIso8601String(),
+            isLocalMessage: true,
+            isSystemMessage: false,
+          )
+        : SendMessageRoomModel.createSystemMessage(
+            roomId: roomId,
+            message: message,
+          );
+    _messages.insert(0, model);
+    notifyListeners();
+    print("✅ Lucky congratulations message added to chat: $message");
+  }
 }

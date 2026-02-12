@@ -1,11 +1,9 @@
 import 'dart:io';
 import 'dart:async';
-
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaheen_star_app/components/app_image.dart';
 import 'package:shaheen_star_app/components/custom_card.dart';
@@ -45,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final String bottomBg = 'assets/images/bg_bottom_nav.png';
 
   // ✅ Banner is now dynamic from API (removed static banner)
-  // final String banner = 'assets/images/wel.jpeg'; 
+  // final String banner = 'assets/images/wel.jpeg';
 
   final String userImg1 = 'assets/images/bg_home_rank1.png';
 
@@ -56,10 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final String profile = 'assets/images/person.png';
 
   DateTime? _lastRefreshTime;
-  
+
   // ✅ CarouselSlider Controller for banner
-  final CarouselSliderController _bannerCarouselController = CarouselSliderController();
-  
+  final CarouselSliderController _bannerCarouselController =
+      CarouselSliderController();
+
   // Scroll controller for top user profiles
   final ScrollController _topProfilesScrollController = ScrollController();
 
@@ -67,10 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentBannerIndex = 0;
   Timer? _bannerTimer;
   bool _bannerFetchAttempted = false; // ✅ Prevent repeated banner fetches
-  
+
   // Tab state for Hot/Mine/MIDDLE_EAST
   int selectedTopTab = 0; // 0: Hot, 1: Mine, 2: MIDDLE_EAST
-  
   // Live tab state for Hot tab (Offical Live / Popular Live)
   int _selectedLiveTab = 0; // 0: Offical Live, 1: Popular Live
 
@@ -78,12 +76,24 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      Provider.of<ProfileUpdateProvider>(context, listen: false).fetchUserData();
+      Provider.of<ProfileUpdateProvider>(
+        context,
+        listen: false,
+      ).fetchUserData();
       final prefs = await SharedPreferences.getInstance();
-      var userId = prefs.get('user_id')?.toString() ?? prefs.getInt('user_id')?.toString() ?? '';
+      var userId =
+          prefs.get('user_id')?.toString() ??
+          prefs.getInt('user_id')?.toString() ??
+          '';
       if (userId.isEmpty || userId == '0') userId = '';
-      await Provider.of<BannerProvider>(context, listen: false).fetchBanners(userId);
-      final banners = Provider.of<BannerProvider>(context, listen: false).banners;
+      await Provider.of<BannerProvider>(
+        context,
+        listen: false,
+      ).fetchBanners(userId);
+      final banners = Provider.of<BannerProvider>(
+        context,
+        listen: false,
+      ).banners;
       _refreshRooms();
     });
   }
@@ -167,224 +177,230 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                      // Top Bar - Hot/Mine/MIDDLE_EAST Tabs
-                      Container(
-                        color: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Left Tabs
-                            Flexible(
-                              flex: selectedTopTab == 1 ? 1 : 2,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Hot Tab
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selectedTopTab = 0;
-                                      });
-                                    },
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Hot',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                            fontWeight: selectedTopTab == 0
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                        if (selectedTopTab == 0)
-                                          Container(
-                                            margin: const EdgeInsets.only(top: 4),
-                                            height: 3,
-                                            width: 30,
-                                            decoration: BoxDecoration(
-                                              color: Colors.green,
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  // Mine Tab
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selectedTopTab = 1;
-                                      });
-                                    },
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Mine',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                            fontWeight: selectedTopTab == 1
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                          ),
-                                        ),
-                                        if (selectedTopTab == 1)
-                                          Container(
-                                            margin: const EdgeInsets.only(top: 4),
-                                            height: 3,
-                                            width: 30,
-                                            decoration: BoxDecoration(
-                                              color: Colors.green,
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  // MIDDLE_EAST Tab (hide when Mine tab is selected to save space)
-                                  if (selectedTopTab != 1)
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          selectedTopTab = 2;
-                                        });
-                                      },
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'MIDDLE_EAST',
-                                                style: TextStyle(
-                                                  color: Colors.black,
-                                                  fontSize: 16,
-                                                  fontWeight: selectedTopTab == 2
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              const Icon(
-                                                Icons.arrow_drop_down,
-                                                size: 20,
-                                                color: Colors.black,
-                                              ),
-                                            ],
-                                          ),
-                                          if (selectedTopTab == 2)
-                                            Container(
-                                              margin: const EdgeInsets.only(top: 4),
-                                              height: 3,
-                                              width: 30,
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius: BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                        ],
+                  // Top Bar - Hot/Mine/MIDDLE_EAST Tabs
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Left Tabs
+                        Flexible(
+                          flex: selectedTopTab == 1 ? 1 : 2,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Hot Tab
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedTopTab = 0;
+                                  });
+                                },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Hot',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 16,
+                                        fontWeight: selectedTopTab == 0
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
-                                ],
+                                    if (selectedTopTab == 0)
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        height: 3,
+                                        width: 30,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            // Middle Dropdown (only show when Mine tab is selected)
-                            if (selectedTopTab == 1)
-                              Flexible(
-                                flex: 1,
-                                child: GestureDetector(
+                              const SizedBox(width: 20),
+                              // Mine Tab
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedTopTab = 1;
+                                  });
+                                },
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Mine',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 16,
+                                        fontWeight: selectedTopTab == 1
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (selectedTopTab == 1)
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        height: 3,
+                                        width: 30,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              // MIDDLE_EAST Tab (hide when Mine tab is selected to save space)
+                              if (selectedTopTab != 1)
+                                GestureDetector(
                                   onTap: () {
-                                    // Show MIDDLE_EAST dropdown
+                                    setState(() {
+                                      selectedTopTab = 2;
+                                    });
                                   },
-                                  child: const Row(
+                                  child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(
-                                        'MIDDLE_EAST',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 14,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'MIDDLE_EAST',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 16,
+                                              fontWeight: selectedTopTab == 2
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.arrow_drop_down,
+                                            size: 20,
+                                            color: Colors.black,
+                                          ),
+                                        ],
+                                      ),
+                                      if (selectedTopTab == 2)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 4),
+                                          height: 3,
+                                          width: 30,
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(width: 4),
-                                      Icon(
-                                        Icons.arrow_drop_down,
-                                        size: 20,
-                                        color: Colors.black,
-                                      ),
                                     ],
                                   ),
                                 ),
+                            ],
+                          ),
+                        ),
+                        // Middle Dropdown (only show when Mine tab is selected)
+                        if (selectedTopTab == 1)
+                          Flexible(
+                            flex: 1,
+                            child: GestureDetector(
+                              onTap: () {
+                                // Show MIDDLE_EAST dropdown
+                              },
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'MIDDLE_EAST',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 20,
+                                    color: Colors.black,
+                                  ),
+                                ],
                               ),
-                            // Right Icons
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Trophy Icon (Group_33.svg)
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => RankingScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: SvgPicture.asset(
-                                    'assets/icons/Group_33.svg',
-                                    width: 24,
-                                    height: 24,
-                                    fit: BoxFit.contain,
+                            ),
+                          ),
+                        // Right Icons
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Trophy Icon (Group_33.svg)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RankingScreen(),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Search Icon (Group_32.svg)
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const SearchScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: SvgPicture.asset(
-                                    'assets/icons/Group_32.svg',
-                                    width: 24,
-                                    height: 24,
-                                    fit: BoxFit.contain,
+                                );
+                              },
+                              child: SvgPicture.asset(
+                                'assets/icons/Group_33.svg',
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Search Icon (Group_32.svg)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SearchScreen(),
                                   ),
-                                ),
-                              ],
+                                );
+                              },
+                              child: SvgPicture.asset(
+                                'assets/icons/Group_32.svg',
+                                width: 24,
+                                height: 24,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
 
-                      // Content based on selected tab
-                      if (selectedTopTab == 0)
-                        // Hot Tab - Live Streaming View
-                        _buildHotTabContent(bannerProvider)
-                      else if (selectedTopTab == 1)
-                        // Mine Tab - Mine Screen Content
-                        _buildMineTabContent()
-                      else if (selectedTopTab == 2)
-                        // MIDDLE_EAST Tab - Same design as Popular
-                        _buildMiddleEastTabContent(bannerProvider)
-                      else
-                        // Popular Tab - Original View
-                        _buildPopularTabContent(bannerProvider),
+                  // Content based on selected tab
+                  if (selectedTopTab == 0)
+                    // Hot Tab - Live Streaming View
+                    _buildHotTabContent(bannerProvider)
+                  else if (selectedTopTab == 1)
+                    // Mine Tab - Mine Screen Content
+                    _buildMineTabContent()
+                  else if (selectedTopTab == 2)
+                    // MIDDLE_EAST Tab - Same design as Popular
+                    _buildMiddleEastTabContent(bannerProvider)
+                  else
+                    // Popular Tab - Original View
+                    _buildPopularTabContent(bannerProvider),
                 ],
               ),
             );
@@ -716,13 +732,11 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(12),
             color: Colors.grey.shade200,
           ),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: const Center(child: CircularProgressIndicator()),
         ),
       );
     }
-    
+
     if (banners.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -735,7 +749,10 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () async {
                 _bannerFetchAttempted = false;
                 final prefs = await SharedPreferences.getInstance();
-                var userId = prefs.get('user_id')?.toString() ?? prefs.getInt('user_id')?.toString() ?? '';
+                var userId =
+                    prefs.get('user_id')?.toString() ??
+                    prefs.getInt('user_id')?.toString() ??
+                    '';
                 if (userId.isEmpty || userId == '0') userId = '';
                 await bannerProvider.fetchBanners(userId);
                 if (mounted) setState(() {});
@@ -745,14 +762,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.image_not_supported_outlined, size: 28, color: Colors.grey.shade600),
+                    Icon(
+                      Icons.image_not_supported_outlined,
+                      size: 28,
+                      color: Colors.grey.shade600,
+                    ),
                     const SizedBox(height: 4),
-                    Text('Banner load nahi hua', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                    Text(
+                      'Banner load nahi hua',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: () async {
                         _bannerFetchAttempted = false;
                         final prefs = await SharedPreferences.getInstance();
-                        var userId = prefs.get('user_id')?.toString() ?? prefs.getInt('user_id')?.toString() ?? '';
+                        var userId =
+                            prefs.get('user_id')?.toString() ??
+                            prefs.getInt('user_id')?.toString() ??
+                            '';
                         if (userId.isEmpty || userId == '0') userId = '';
                         await bannerProvider.fetchBanners(userId);
                         if (mounted) setState(() {});
@@ -761,7 +791,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       label: const Text('Retry'),
                       style: TextButton.styleFrom(
                         minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
@@ -801,9 +834,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (banner.redirectUrl.isNotEmpty) {
                     final uri = Uri.parse(banner.redirectUrl);
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
                     } else {
-                      print("❌ [HomeScreen] Could not launch URL: ${banner.redirectUrl}");
+                      print(
+                        "❌ [HomeScreen] Could not launch URL: ${banner.redirectUrl}",
+                      );
                     }
                   }
                 },
@@ -817,7 +855,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-  
+
   // ✅ Build Banner Image Widget (no static fallback)
   Widget _buildBannerImage(String imageUrl) {
     if (imageUrl.isEmpty) {
@@ -899,36 +937,41 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             // Use real backend data for live streamers - Show ALL rooms
-            final sampleStreamers = List.generate(
-              roomProvider.rooms.length,
-              (index) {
-                final room = roomProvider.rooms[index];
-                // ✅ Use participantCount (total members) instead of views
-                final totalMembers = room.participantCount ?? 0;
-                // Format total members: if >= 1000, show "XK", else show actual number
-                final formattedMembers = totalMembers >= 1000 
-                    ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll('.0K', 'K')
-                    : totalMembers.toString();
-                // Format popularity: use views for popularity
-                final views = room.views ?? 0;
-                final formattedPopularity = views >= 1000 
-                    ? '${(views / 1000).toStringAsFixed(1)}K'.replaceAll('.0K', 'K')
-                    : views.toString();
-                
-                return {
-                  'room': room, // ✅ Store room object for navigation
-                  'profileImage': normalizeRoomProfileUrl(room.roomProfile),
-                  'userName': room.name,
-                  'countryFlag': room.countryFlag?.isNotEmpty == true
-                      ? room.countryFlag!
-                      : CountryFlagUtils.getFlagEmoji(null),
-                  'viewers': formattedMembers, // ✅ Real total members data
-                  'popularity': formattedPopularity,
-                  'isSelected': index == 3, // 4th item selected
-                  'nameColor': index == 3 ? Colors.pink : Colors.black87,
-                };
-              },
-            );
+            final sampleStreamers = List.generate(roomProvider.rooms.length, (
+              index,
+            ) {
+              final room = roomProvider.rooms[index];
+              // ✅ Use participantCount (total members) instead of views
+              final totalMembers = room.participantCount ?? 0;
+              // Format total members: if >= 1000, show "XK", else show actual number
+              final formattedMembers = totalMembers >= 1000
+                  ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll(
+                      '.0K',
+                      'K',
+                    )
+                  : totalMembers.toString();
+              // Format popularity: use views for popularity
+              final views = room.views ?? 0;
+              final formattedPopularity = views >= 1000
+                  ? '${(views / 1000).toStringAsFixed(1)}K'.replaceAll(
+                      '.0K',
+                      'K',
+                    )
+                  : views.toString();
+
+              return {
+                'room': room, // ✅ Store room object for navigation
+                'profileImage': normalizeRoomProfileUrl(room.roomProfile),
+                'userName': room.name,
+                'countryFlag': room.countryFlag?.isNotEmpty == true
+                    ? room.countryFlag!
+                    : CountryFlagUtils.getFlagEmoji(null),
+                'viewers': formattedMembers, // ✅ Real total members data
+                'popularity': formattedPopularity,
+                'isSelected': index == 3, // 4th item selected
+                'nameColor': index == 3 ? Colors.pink : Colors.black87,
+              };
+            });
 
             return ListView.builder(
               shrinkWrap: true,
@@ -948,7 +991,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           roomId: room.id,
                           topic: room.topic,
                           avatarUrl: _getRoomAvatarFile(room.roomProfile),
-                          roomProfileUrl: _getRoomProfileNetworkUrl(room.roomProfile),
+                          roomProfileUrl: _getRoomProfileNetworkUrl(
+                            room.roomProfile,
+                          ),
                         ),
                       ),
                     );
@@ -966,12 +1011,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     isSelected: streamer['isSelected'] as bool,
                     animateName: true,
                     nameColor: streamer['nameColor'] as Color?,
-                    frameImage: 'assets/images/bg_home_rank1.png', // Ornate frame
-                    secondaryAvatars: [
-                      'assets/images/person.png',
-                      'assets/images/person.png',
-                      'assets/images/person.png',
-                    ],
+                    frameImage:
+                        'assets/images/bg_home_rank1.png', // Ornate frame
+                    secondaryAvatars: (room.participantAvatars != null &&
+                            room.participantAvatars!.isNotEmpty)
+                        ? room.participantAvatars!
+                        : [
+                            'assets/images/person.png',
+                            'assets/images/person.png',
+                            'assets/images/person.png',
+                          ],
                   ),
                 );
               },
@@ -1167,9 +1216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => RankingScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => RankingScreen()),
                     );
                   },
                   child: Container(
@@ -1215,9 +1262,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => RankingScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => RankingScreen()),
               );
             },
             child: Container(
@@ -1290,7 +1335,11 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Left Arrow
               IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Colors.grey, size: 20),
+                icon: const Icon(
+                  Icons.arrow_back_ios,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 onPressed: () {
                   _topProfilesScrollController.animateTo(
                     (_topProfilesScrollController.offset - 120).clamp(
@@ -1316,7 +1365,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ];
                     final names = ['داستان', 'Empire🔥', 'داستان'];
                     final views = ['25.48M', '19.8M', '25.48M'];
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 5),
                       child: CustomProfileCard(
@@ -1332,7 +1381,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // Right Arrow
               IconButton(
-                icon: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 20),
+                icon: const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 onPressed: () {
                   _topProfilesScrollController.animateTo(
                     (_topProfilesScrollController.offset + 120).clamp(
@@ -1398,7 +1451,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           roomId: room.id,
                           topic: room.topic,
                           avatarUrl: _getRoomAvatarFile(room.roomProfile),
-                          roomProfileUrl: _getRoomProfileNetworkUrl(room.roomProfile),
+                          roomProfileUrl: _getRoomProfileNetworkUrl(
+                            room.roomProfile,
+                          ),
                         ),
                       ),
                     );
@@ -1411,7 +1466,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   },
                   child: CustomCard(
-                    userProfile: normalizeRoomProfileUrl(room.creatorProfileUrl),
+                    userProfile: normalizeRoomProfileUrl(
+                      room.creatorProfileUrl,
+                    ),
                     profile: normalizeRoomProfileUrl(room.roomProfile),
                     flag: room.countryFlag?.isNotEmpty == true
                         ? room.countryFlag!
@@ -1487,36 +1544,41 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             // Use real backend data for live streamers - Show ALL rooms
-            final sampleStreamers = List.generate(
-              roomProvider.rooms.length,
-              (index) {
-                final room = roomProvider.rooms[index];
-                // ✅ Use participantCount (total members) instead of views
-                final totalMembers = room.participantCount ?? 0;
-                // Format total members: if >= 1000, show "XK", else show actual number
-                final formattedMembers = totalMembers >= 1000 
-                    ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll('.0K', 'K')
-                    : totalMembers.toString();
-                // Format popularity: use views for popularity
-                final views = room.views ?? 0;
-                final formattedPopularity = views >= 1000 
-                    ? '${(views / 1000).toStringAsFixed(1)}K'.replaceAll('.0K', 'K')
-                    : views.toString();
-                
-                return {
-                  'room': room, // ✅ Store room object for navigation
-                  'profileImage': normalizeRoomProfileUrl(room.roomProfile),
-                  'userName': room.name,
-                  'countryFlag': room.countryFlag?.isNotEmpty == true
-                      ? room.countryFlag!
-                      : CountryFlagUtils.getFlagEmoji(null),
-                  'viewers': formattedMembers, // ✅ Real total members data
-                  'popularity': formattedPopularity,
-                  'isSelected': index == 3, // 4th item selected
-                  'nameColor': index == 3 ? Colors.pink : Colors.black87,
-                };
-              },
-            );
+            final sampleStreamers = List.generate(roomProvider.rooms.length, (
+              index,
+            ) {
+              final room = roomProvider.rooms[index];
+              // ✅ Use participantCount (total members) instead of views
+              final totalMembers = room.participantCount ?? 0;
+              // Format total members: if >= 1000, show "XK", else show actual number
+              final formattedMembers = totalMembers >= 1000
+                  ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll(
+                      '.0K',
+                      'K',
+                    )
+                  : totalMembers.toString();
+              // Format popularity: use views for popularity
+              final views = room.views ?? 0;
+              final formattedPopularity = views >= 1000
+                  ? '${(views / 1000).toStringAsFixed(1)}K'.replaceAll(
+                      '.0K',
+                      'K',
+                    )
+                  : views.toString();
+
+              return {
+                'room': room, // ✅ Store room object for navigation
+                'profileImage': normalizeRoomProfileUrl(room.roomProfile),
+                'userName': room.name,
+                'countryFlag': room.countryFlag?.isNotEmpty == true
+                    ? room.countryFlag!
+                    : CountryFlagUtils.getFlagEmoji(null),
+                'viewers': formattedMembers, // ✅ Real total members data
+                'popularity': formattedPopularity,
+                'isSelected': index == 3, // 4th item selected
+                'nameColor': index == 3 ? Colors.pink : Colors.black87,
+              };
+            });
 
             return ListView.builder(
               shrinkWrap: true,
@@ -1536,7 +1598,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           roomId: room.id,
                           topic: room.topic,
                           avatarUrl: _getRoomAvatarFile(room.roomProfile),
-                          roomProfileUrl: _getRoomProfileNetworkUrl(room.roomProfile),
+                          roomProfileUrl: _getRoomProfileNetworkUrl(
+                            room.roomProfile,
+                          ),
                         ),
                       ),
                     );
@@ -1554,12 +1618,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     isSelected: streamer['isSelected'] as bool,
                     animateName: true,
                     nameColor: streamer['nameColor'] as Color?,
-                    frameImage: 'assets/images/bg_home_rank1.png', // Ornate frame
-                    secondaryAvatars: [
-                      'assets/images/person.png',
-                      'assets/images/person.png',
-                      'assets/images/person.png',
-                    ],
+                    frameImage:
+                        'assets/images/bg_home_rank1.png', // Ornate frame
+                    secondaryAvatars: (room.participantAvatars != null &&
+                            room.participantAvatars!.isNotEmpty)
+                        ? room.participantAvatars!
+                        : [
+                            'assets/images/person.png',
+                            'assets/images/person.png',
+                            'assets/images/person.png',
+                          ],
                   ),
                 );
               },
@@ -1596,7 +1664,10 @@ class _MineTabContentState extends State<_MineTabContent> {
 
   Future<void> _checkUserRoom() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.get('user_id')?.toString() ?? prefs.getInt('user_id')?.toString() ?? '';
+    final userId =
+        prefs.get('user_id')?.toString() ??
+        prefs.getInt('user_id')?.toString() ??
+        '';
     if (userId.isEmpty || !mounted) return;
     _currentUserId = userId;
     final provider = Provider.of<CreateRoomProvider>(context, listen: false);
@@ -1610,7 +1681,9 @@ class _MineTabContentState extends State<_MineTabContent> {
   Widget build(BuildContext context) {
     return Consumer<CreateRoomProvider>(
       builder: (context, createRoomProvider, _) {
-        final hasRoom = createRoomProvider.editingMode && createRoomProvider.existingRoomData != null;
+        final hasRoom =
+            createRoomProvider.editingMode &&
+            createRoomProvider.existingRoomData != null;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1659,7 +1732,9 @@ class _MineTabContentState extends State<_MineTabContent> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            hasRoom ? 'Create my room (one room only)' : 'Create my room',
+                            hasRoom
+                                ? 'Create my room (one room only)'
+                                : 'Create my room',
                             style: TextStyle(
                               color: Colors.green.shade700,
                               fontSize: 16,
@@ -1766,11 +1841,19 @@ class _MineTabContentState extends State<_MineTabContent> {
     }
     // Support backend keys: room_id/id, room_name/name, topic, room_profile
     final roomId = (room['room_id'] ?? room['id'])?.toString() ?? '';
-    final roomName = (room['room_name'] ?? room['name'])?.toString() ?? 'My Room';
+    final roomName =
+        (room['room_name'] ?? room['name'])?.toString() ?? 'My Room';
     final topic = room['topic']?.toString() ?? '';
-    final roomProfile = (room['room_profile'] ?? room['profile'] ?? room['room_profile_url'])?.toString() ?? '';
+    final roomProfile =
+        (room['room_profile'] ?? room['profile'] ?? room['room_profile_url'])
+            ?.toString() ??
+        '';
     const baseUrl = 'https://shaheenstar.online/';
-    final profileUrl = roomProfile.isEmpty ? null : (roomProfile.startsWith('http') ? roomProfile : '$baseUrl$roomProfile');
+    final profileUrl = roomProfile.isEmpty
+        ? null
+        : (roomProfile.startsWith('http')
+              ? roomProfile
+              : '$baseUrl$roomProfile');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1811,13 +1894,22 @@ class _MineTabContentState extends State<_MineTabContent> {
                     ? SizedBox(
                         width: 80,
                         height: 80,
-                        child: cachedImage(profileUrl, width: 80, height: 80, fit: BoxFit.cover),
+                        child: cachedImage(
+                          profileUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
                       )
                     : Container(
                         width: 80,
                         height: 80,
                         color: Colors.green.shade100,
-                        child: Icon(Icons.home, size: 40, color: Colors.green.shade700),
+                        child: Icon(
+                          Icons.home,
+                          size: 40,
+                          color: Colors.green.shade700,
+                        ),
                       ),
               ),
               const SizedBox(width: 16),
@@ -1857,7 +1949,11 @@ class _MineTabContentState extends State<_MineTabContent> {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade600),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey.shade600,
+              ),
             ],
           ),
         ),
@@ -1870,7 +1966,11 @@ class _MineTabContentState extends State<_MineTabContent> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.meeting_room_outlined, size: 80, color: Colors.grey.shade400),
+          Icon(
+            Icons.meeting_room_outlined,
+            size: 80,
+            color: Colors.grey.shade400,
+          ),
           const SizedBox(height: 16),
           Text(
             'You haven\'t created a room yet',
@@ -1905,27 +2005,17 @@ class _MineTabContentState extends State<_MineTabContent> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      Colors.green.shade100,
-                      Colors.green.shade300,
-                    ],
+                    colors: [Colors.green.shade100, Colors.green.shade300],
                   ),
                 ),
-                child: const Icon(
-                  Icons.public,
-                  size: 100,
-                  color: Colors.green,
-                ),
+                child: const Icon(Icons.public, size: 100, color: Colors.green),
               );
             },
           ),
           const SizedBox(height: 24),
           const Text(
             'No data',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
       ),

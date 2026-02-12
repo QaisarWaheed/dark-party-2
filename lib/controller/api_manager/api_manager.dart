@@ -462,6 +462,39 @@ class ApiManager {
     }
   }
 
+  static Future<UserSignUpModel?> reviewLogin() async {
+    try {
+      final uri = Uri.parse('https://shaheenstar.online/review-login.php');
+      print('📤 Checking Reviewer Login...');
+
+      final response = await http.post(uri);
+      print('📥 Reviewer Login Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['user'] != null) {
+          final token = data['token']?.toString();
+          final userJson = Map<String, dynamic>.from(data['user']);
+
+          if (token != null && token.isNotEmpty) {
+            userJson['api_token'] = token;
+          }
+
+          // ✅ Add agency_info from root level response to userJson
+          if (data.containsKey('agency_info') && data['agency_info'] != null) {
+            userJson['agency_info'] = data['agency_info'];
+          }
+
+          return UserSignUpModel.fromJson(userJson);
+        }
+      }
+      return null;
+    } catch (e) {
+      print('❌ Reviewer Login Exception: $e');
+      return null;
+    }
+  }
+
   /// GET user banners from backend. Backend returns: message, total, banners[] with image_path, redirect_url.
   /// [userId] optional – pass empty to load global banners when backend supports it.
   /// [apiToken] optional – if provided (e.g. from SharedPreferences), used as Bearer token; else static bearertoken.
@@ -1681,12 +1714,7 @@ class ApiManager {
       );
       http.Response? response;
       try {
-        final sigFields = _generateSignatureFields(includeChannel: false);
-        final body = <String, String>{
-          ...sigFields,
-          'user_id': userId,
-          'room_id': roomId,
-        };
+        final body = <String, String>{'user_id': userId, 'room_id': roomId};
         response = await _postWithFallback(
           uri,
           headers: headers,
@@ -2256,6 +2284,61 @@ class ApiManager {
       return null;
     } catch (e) {
       print('[ApiManager] getUserInfoById error: $e');
+      return null;
+    }
+  }
+
+  /// Get user info with ID change check. When admin changes user ID, returns
+  /// is_id_changed: true and new_id. Use this to detect and apply ID updates.
+  static Future<Map<String, dynamic>?> getUserInfoWithIdCheck(
+    int userId,
+  ) async {
+    try {
+      final uri = Uri.parse(ApiConstants.getUserInfoApi);
+      final headers = {'Accept': 'application/json'};
+      http.Response? response;
+      try {
+        response = await _postWithFallback(
+          uri,
+          headers: headers,
+          body: {'user_id': userId.toString()},
+        ).timeout(const Duration(seconds: 8));
+      } catch (e) {
+        print('[ApiManager] getUserInfoWithIdCheck timeout or error: $e');
+        return null;
+      }
+
+      if (response == null) return null;
+      if (response.statusCode != 200) return null;
+      if (response.body.trim().isEmpty) return null;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) return null;
+
+      Map<String, dynamic>? data;
+      if (decoded['status'] == 'success' && decoded['data'] is Map) {
+        data = Map<String, dynamic>.from(decoded['data'] as Map);
+      } else if (decoded['data'] is Map) {
+        data = Map<String, dynamic>.from(decoded['data'] as Map);
+      }
+      if (data == null) return null;
+
+      // Robust parsing: is_id_changed can be bool, "true", or 1
+      final isIdChanged =
+          decoded['is_id_changed'] == true ||
+          decoded['is_id_changed'] == 'true' ||
+          decoded['is_id_changed'] == 1 ||
+          data['is_id_changed'] == true ||
+          data['is_id_changed'] == 'true' ||
+          data['is_id_changed'] == 1;
+      final newId = decoded['new_id']?.toString() ?? data['new_id']?.toString();
+      if (isIdChanged) {
+        data['is_id_changed'] = true;
+        if (newId != null && newId.isNotEmpty) data['new_id'] = newId;
+      }
+      return data;
+    } catch (e) {
+      print('[ApiManager] getUserInfoWithIdCheck error: $e');
       return null;
     }
   }
@@ -3249,8 +3332,7 @@ class ApiManager {
     }
   }
 
-  static const String _baseUrl =
-      '${ApiConstants.baseUrl}Room_Seats_Management_API.php';
+  static String get _baseUrl => ApiConstants.roomSeatsManagementApi;
 
   // ✅ Helper method to encode form data
   static String _encodeFormData(Map<String, dynamic> data) {
@@ -5447,6 +5529,7 @@ class ApiManager {
     required int senderId,
     required int receiverId,
     required int giftId,
+    required double giftPrice,
     int quantity = 1,
     int? roomId,
   }) async {
@@ -5464,6 +5547,7 @@ class ApiManager {
         'receiver_id': receiverId.toString(),
         'gift_id': giftId.toString(),
         'quantity': quantity.toString(),
+        'gift_price': giftPrice.toString(),
       };
       if (roomId != null) body['room_id'] = roomId.toString();
 
@@ -5710,6 +5794,13 @@ class ApiManager {
     required int agencyId,
   }) async {
     return agencyManager(action: 'get', agencyId: agencyId);
+  }
+
+  /// Get agency the user owns OR is a member of (for "My Agency" screen)
+  static Future<Map<String, dynamic>?> getMyAgency({
+    required int userId,
+  }) async {
+    return agencyManager(action: 'get_my_agency', userId: userId);
   }
 
   /// Get all agencies (using agency_manager.php)

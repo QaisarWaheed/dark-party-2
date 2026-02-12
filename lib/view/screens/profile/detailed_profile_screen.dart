@@ -10,11 +10,13 @@ import 'package:shaheen_star_app/controller/provider/user_chat_provider.dart';
 import 'package:shaheen_star_app/view/screens/user_chat/chat_screen.dart';
 import 'package:shaheen_star_app/model/user_chat_model.dart';
 import 'package:shaheen_star_app/components/profile_with_frame.dart';
+import 'package:shaheen_star_app/view/widgets/user_id_display.dart';
 import 'package:shaheen_star_app/utils/country_flag_utils.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:shaheen_star_app/view/screens/store/store_screen.dart';
 import 'package:shaheen_star_app/controller/provider/agency_provider.dart';
 import 'package:shaheen_star_app/view/screens/agency/agency_profile_center_screen.dart';
+import 'package:shaheen_star_app/view/screens/agency/my_agency_view_screen.dart';
 import 'package:shaheen_star_app/view/screens/agency/all_agency_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -502,12 +504,9 @@ class _ProfileHeaderCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        "ID: ${provider.userId ?? ''}",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: MediaQuery.of(context).size.height * 0.015,
-                        ),
+                      UserIdDisplay(
+                        userId: provider.displayUserId ?? provider.userId ?? '',
+                        isIdChanged: provider.isIdChanged,
                       ),
                       const SizedBox(width: 6),
                       Text(countryFlag, style: TextStyle(fontSize: 14)),
@@ -683,6 +682,135 @@ class ProfileTabView extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
+                    
+                    // Agency Banner
+                    Consumer<AgencyProvider>(
+                      builder: (context, agencyProvider, _) {
+                        // Get the agency for the viewed user
+                        Map<String, dynamic>? userAgency;
+                        
+                        // If viewing another user, we need to fetch their agency from the API
+                        // For now, we'll check if this user is in any of the loaded agencies
+                        final viewedUserId = userId ?? provider.userId;
+                        if (viewedUserId != null) {
+                          // Check if this user owns an agency
+                          try {
+                            final agency = agencyProvider.agencies.firstWhere(
+                              (a) => a is Map && a['user_id']?.toString() == viewedUserId.toString(),
+                            );
+                            if (agency is Map<String, dynamic>) {
+                              userAgency = agency;
+                            }
+                          } catch (_) {}
+                        }
+                        
+                        if (userAgency != null) {
+                          final agencyName = userAgency['agency_name'] ?? userAgency['name'] ?? '';
+                          final agencyCode = userAgency['agency_code'] ?? userAgency['id'] ?? '';
+                          final agencyLogo = userAgency['logo_url'] ?? userAgency['logo'] ?? '';
+                          final ownerCountry = userAgency['owner_country'] ?? userAgency['country'] ?? '';
+                          
+                          return Column(
+                            children: [
+                              Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: const DecorationImage(
+                                    image: AssetImage('assets/images/agency_search.png'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      // Agency Logo
+                                      if (agencyLogo.isNotEmpty && agencyLogo.startsWith('http'))
+                                        ClipOval(
+                                          child: CachedNetworkImage(
+                                            imageUrl: agencyLogo,
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                            errorWidget: (_, __, ___) => Container(
+                                              width: 50,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[300],
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Container(
+                                          width: 50,
+                                          height: 50,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                        ),
+                                      const SizedBox(width: 12),
+                                      // Agency Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              agencyName,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                if (ownerCountry.isNotEmpty)
+                                                  Text(
+                                                    ownerCountry,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.white70,
+                                                    ),
+                                                  ),
+                                                if (ownerCountry.isNotEmpty && agencyCode.isNotEmpty)
+                                                  const SizedBox(width: 8),
+                                                if (agencyCode.isNotEmpty)
+                                                  Text(
+                                                    'ID: $agencyCode',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.white70,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Arrow
+                                      const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                    
                     const Divider(height: 1),
                     const SizedBox(height: 14),
                     // ✅ Use actual IntimacyTabView with Consumer instead of static image
@@ -775,13 +903,18 @@ class ProfileTabView extends StatelessWidget {
                                       );
                                   final userAgency = agencyProvider.userAgency;
                                   if (userAgency != null) {
+                                    final agency = Map<String, dynamic>.from(userAgency);
+                                    final currentUserId = agencyProvider.currentUserId;
+                                    final ownerId = agency['user_id'] ?? agency['owner_id'];
+                                    final isOwner = currentUserId != null &&
+                                        ownerId != null &&
+                                        currentUserId.toString() == ownerId.toString();
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            AgencyProfileCenterScreen(
-                                              agency: userAgency,
-                                            ),
+                                        builder: (_) => isOwner
+                                            ? AgencyProfileCenterScreen(agency: agency)
+                                            : MyAgencyViewScreen(agency: agency),
                                       ),
                                     );
                                   } else {

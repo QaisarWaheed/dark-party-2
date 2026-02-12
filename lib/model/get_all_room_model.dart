@@ -39,6 +39,7 @@ class GetAllRoomModel {
   final int? views;
   final String roomCode; // ✅ NAYA FIELD ADD KARO
   final int? participantCount; // ✅ Total members currently in room
+  final List<String>? participantAvatars; // ✅ Avatars of users currently joined in room
 
   GetAllRoomModel({
     required this.id,
@@ -52,6 +53,7 @@ class GetAllRoomModel {
     this.views,
     required this.roomCode, // ✅ NAYA FIELD ADD KARO
     this.participantCount, // ✅ Total members currently in room
+    this.participantAvatars,
   });
 
   factory GetAllRoomModel.fromJson(Map<String, dynamic> json) {
@@ -121,6 +123,14 @@ class GetAllRoomModel {
         print("⚠️ Error parsing current_members: $e");
       }
     }
+
+    List<String>? participantAvatarsValue;
+    if (json["participant_avatars"] != null && json["participant_avatars"] is List) {
+      participantAvatarsValue = (json["participant_avatars"] as List)
+          .map((e) => e?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
     
     return GetAllRoomModel(
       id: json["id"].toString(),
@@ -134,6 +144,7 @@ class GetAllRoomModel {
       views: viewsValue ?? 0,
       roomCode: json["room_code"] ?? "", // ✅ YEH ADD KARO
       participantCount: participantCountValue ?? 0, // ✅ Total members currently in room
+      participantAvatars: participantAvatarsValue,
     );
   }
 }

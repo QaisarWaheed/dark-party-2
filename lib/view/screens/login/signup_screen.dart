@@ -8,8 +8,25 @@ import 'package:shaheen_star_app/view/screens/login/register_profile.dart';
 
 import '../../widgets/loading_icon_button.dart';
 
-class SignupScreen extends StatelessWidget {
+class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
+
+  @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen> {
+  int _tapCount = 0;
+  bool _showReviewerLogin = false;
+
+  void _handleHiddenTap() {
+    setState(() {
+      _tapCount++;
+      if (_tapCount >= 5) {
+        _showReviewerLogin = true;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +41,7 @@ class SignupScreen extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
             width: double.infinity,
             height: double.infinity,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-            ),
+            decoration: const BoxDecoration(color: Colors.white),
             child: SafeArea(
               child: Center(
                 child: Padding(
@@ -36,14 +51,21 @@ class SignupScreen extends StatelessWidget {
                       // Top small label (right aligned)
                       Align(
                         alignment: Alignment.topRight,
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 8.h, right: 4.w, bottom: 8.h),
-                          child: Text(
-                            'Network Diagnostics',
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w500,
+                        child: GestureDetector(
+                          onTap: _handleHiddenTap,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: 8.h,
+                              right: 4.w,
+                              bottom: 8.h,
+                            ),
+                            child: Text(
+                              'Network Diagnostics',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
@@ -57,9 +79,7 @@ class SignupScreen extends StatelessWidget {
                             Container(
                               width: 120.w,
                               height: 120.w,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                              ),
+                              decoration: BoxDecoration(shape: BoxShape.circle),
                               child: ClipOval(
                                 child: AppImage.asset(
                                   'assets/images/app_logo.jpeg',
@@ -109,9 +129,10 @@ class SignupScreen extends StatelessWidget {
                           LoadingIconButton(
                             backgroundColor: Colors.white,
                             isLoading: false,
-                            onPressed: () => googleProvider.googleSignup(context),
+                            onPressed: () =>
+                                googleProvider.googleSignup(context),
                             label: 'Google',
-                            iconPath: 'assets/images/google.jpeg',
+                            iconPath: 'assets/images/Logo-google-icon-PNG.png',
                             textColor: Colors.black87,
                             height: 56,
                             borderRadius: 40,
@@ -190,6 +211,20 @@ class SignupScreen extends StatelessWidget {
                             ),
                           ),
 
+                          // ✅ Reviewer Login (Hidden by default, tap Network Diagnostics 5 times to reveal)
+                          if (_showReviewerLogin)
+                            TextButton(
+                              onPressed: () =>
+                                  googleProvider.reviewerLogin(context),
+                              child: Text(
+                                'Reviewer Login',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ),
+
                           SizedBox(height: 8.h),
 
                           // Footer small privacy text
@@ -205,7 +240,7 @@ class SignupScreen extends StatelessWidget {
                             ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),

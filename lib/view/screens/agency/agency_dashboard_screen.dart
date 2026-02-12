@@ -188,8 +188,9 @@ class AgencyDashboardScreen extends StatelessWidget {
                                 itemCount: agencyProvider.agencyMembers.length,
                                 itemBuilder: (context, index) {
                                   final member = agencyProvider.agencyMembers[index];
-                                  final name = member['name']?.toString() ?? member['username']?.toString() ?? 'Member';
-                                  final id = member['id']?.toString() ?? member['user_id']?.toString() ?? '';
+                                  final memberMap = member is Map ? member : {};
+                                  final name = memberMap['name']?.toString() ?? memberMap['username']?.toString() ?? 'Member';
+                                  final id = (memberMap['display_id'] ?? memberMap['user_id'] ?? memberMap['id'])?.toString() ?? '';
                                   return ListTile(
                                     leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'M')),
                                     title: Text(name),

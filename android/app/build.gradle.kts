@@ -19,7 +19,7 @@ val hasReleaseKeystore = keystorePropertiesFile.exists() &&
     keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it).exists() } == true
 
 android {
-    namespace = "com.skylogicsolutions.shaheenstar"
+    namespace = "com.skylogicsolutions.darkparty"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -38,21 +38,33 @@ android {
             if (hasReleaseKeystore) {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) }
                 storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
     }
 
     defaultConfig {
-        applicationId = "com.skylogicsolutions.shaheenstar"
+        applicationId = "com.skylogicsolutions.darkparty"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
+    }
+
+    bundle {
+        abi {
+            enableSplit = true
+        }
+        density {
+            enableSplit = true
+        }
+        language {
+            enableSplit = true
         }
     }
 

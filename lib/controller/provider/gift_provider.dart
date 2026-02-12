@@ -1145,29 +1145,28 @@ class GiftProvider with ChangeNotifier {
 
       if (isLucky && !isSelfGift) {
         print(
-          "🍀 [GiftProvider] Lucky Gift (Not Self) detected! Switching to HTTP API Strategy to ensure Multiplier data.",
+          "🍀 [GiftProvider] Lucky Gift (Not Self) detected! Using lucky_gift_api for spin/multiplier.",
         );
 
         try {
-          final response = await ApiManager.sendGift(
+          // ✅ Route to lucky_gift_api.php - handles spin, multiplier, deduction, receiver coins, WebSocket broadcast
+          final jsonResponse = await ApiManager.triggerLuckyGift(
             senderId: senderId,
             receiverId: receiverId,
-            roomId: roomId,
-            giftValue: totalValue,
             giftId: giftId,
-            senderSeatNumber: senderSeatNumber,
+            giftPrice: _selectedGift!.price,
+            quantity: _giftQuantity,
+            roomId: roomId,
           );
 
-          if (response != null && response.isSuccess) {
-            print("✅ [GiftProvider] Lucky Gift sent successfully via HTTP!");
-            print(
-              "   Response Data: ${response.data}",
-            ); // This should contain the multiplier!
+          if (jsonResponse != null &&
+              (jsonResponse['status'] == 'success' ||
+                  jsonResponse['status'] == true)) {
+            final data = jsonResponse['data'] as Map<String, dynamic>? ?? {};
+            print("✅ [GiftProvider] Lucky Gift sent via lucky_gift_api!");
+            print("   Multiplier: ${data['multiplier']}, WinCoins: ${data['win_coins']}");
 
-            // Handle Data extraction
-            final data = response.data ?? {};
-
-            // Construct a rich event for the UI
+            // Construct rich event for UI (animations, banners)
             final giftSentData = <String, dynamic>{
               'gift_id': _selectedGift!.id,
               'gift_name': _selectedGift!.name,
@@ -1176,39 +1175,55 @@ class GiftProvider with ChangeNotifier {
               'quantity': _giftQuantity,
               'sender_id': senderId,
               'receiver_id': receiverId,
-              // Backend might return names, otherwise they will be null and UI handles it
-              'sender_name': data['sender_name'] as String?,
-              'receiver_name': data['receiver_name'] as String?,
               'gift_animation': _selectedGift!.animationFile,
               'animation_file': _selectedGift!.animationFile,
               'is_lucky': true,
               'status': 'success',
-              'message': 'Gift sent successfully',
+              'message': jsonResponse['message'] ?? 'Gift sent successfully',
             };
-
-            // Merge backend response data (which has multiplier/win_coins)
             giftSentData.addAll(data);
 
-            // Extract and log the critical data
-            final mult = data['multiplier'] ?? data['data']?['multiplier'];
-            final wCoins = data['win_coins'] ?? data['data']?['win_coins'];
-            print(
-              "🍀 [GiftProvider] HTTP Result -> Multiplier: $mult, WinCoins: $wCoins",
-            );
-
-            // ✅ EMIT LOCAL EVENT WITH THE MULTIPLIER to trigger Animations & Banners
-            print(
-              '🍀 [GiftProvider] Emitting local gift:sent event with result data from HTTP',
-            );
             _giftWsService.emit('gift:sent', giftSentData);
 
-            // ✅ Update sender balance using new backend fields (sender_paid_coin_type)
-            _updateSenderBalance(data, senderId);
+            // Update balances (lucky_gift_api uses gold for sender, diamond for receiver)
+            _updateSenderBalance(
+              {'sender_paid_coin_type': 'gold', ...jsonResponse},
+              senderId,
+            );
+            _updateReceiverDiamondCoins(
+              {'receiver_received_coin_type': 'diamond', ...jsonResponse},
+              receiverId,
+            );
 
-            // ✅ Update receiver's diamond coins if receiver is current user
-            _updateReceiverDiamondCoins(data, receiverId);
+            // Refetch balance from API to ensure UI shows correct value (including any winnings)
+            try {
+              final rawUserId = await _getUserIdFromPrefs();
+              final uid = rawUserId.isNotEmpty ? rawUserId : senderId.toString();
+              final balanceResp = await ApiManager.getUserCoinsBalance(
+                userId: uid,
+              );
+              if (balanceResp != null &&
+                  balanceResp.isSuccess &&
+                  balanceResp.goldCoins != null) {
+                _userBalance = balanceResp.goldCoins!;
+                final prefs = await SharedPreferences.getInstance();
+                final userId =
+                    UserIdUtils.formatTo8Digits(uid) ?? uid;
+                if (userId.isNotEmpty) {
+                  await prefs.setDouble(
+                    'gold_coins_$userId',
+                    balanceResp.goldCoins!,
+                  );
+                }
+                notifyListeners();
+                print(
+                  "💰 [GiftProvider] Balance refetched after Lucky gift: $_userBalance",
+                );
+              }
+            } catch (e) {
+              print("⚠️ [GiftProvider] Balance refetch failed: $e");
+            }
 
-            // Success Cleanup
             _errorMessage = null;
             _selectedGift = null;
             _giftQuantity = 1;
@@ -1216,14 +1231,17 @@ class GiftProvider with ChangeNotifier {
             notifyListeners();
             return true;
           } else {
-            print("❌ [GiftProvider] HTTP Send Failed: ${response?.message}");
-            _errorMessage = response?.message ?? "Failed to send lucky gift";
+            final msg = jsonResponse?['message'] as String? ??
+                jsonResponse?['error_details'] as String? ??
+                "Failed to send lucky gift";
+            print("❌ [GiftProvider] Lucky Gift API Failed: $msg");
+            _errorMessage = msg;
             _isLoading = false;
             notifyListeners();
             return false;
           }
         } catch (e) {
-          print("❌ [GiftProvider] HTTP Exception: $e");
+          print("❌ [GiftProvider] Lucky Gift Exception: $e");
           _errorMessage = "Error sending gift: $e";
           _isLoading = false;
           notifyListeners();

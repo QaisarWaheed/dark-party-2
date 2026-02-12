@@ -22,6 +22,7 @@ import '../../../model/seat_model.dart';
 import '../../../model/store_model.dart';
 import '../../../utils/country_utils.dart';
 import '../profile/detailed_profile_screen.dart';
+import '../../widgets/user_id_display.dart';
 
 class RoomBottomSheetContent extends StatefulWidget {
   final dynamic profileProvider;
@@ -587,14 +588,16 @@ class RoomBottomSheetContentState extends State<RoomBottomSheetContent>
           ),
           child: Container(
             decoration: BoxDecoration(
-              // ✅ CP User: Use gradient background image, Normal User: White background
-              color: isCpUser ? Colors.transparent : Colors.white,
-              image: isCpUser
-                  ? const DecorationImage(
-                      image: AssetImage(
-                        'assets/images/cp_profile_background.png',
-                      ),
-                      fit: BoxFit.cover,
+              // ✅ CP User: Use gradient background, Normal User: White background
+              color: isCpUser ? null : Colors.white,
+              gradient: isCpUser
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF2E0249), // Dark Purple
+                        Color(0xFF570A57), // Purple
+                      ],
                     )
                   : null,
               borderRadius: const BorderRadius.only(
@@ -942,12 +945,9 @@ class RoomBottomSheetContentState extends State<RoomBottomSheetContent>
                               _buildTagBadge(leftTag.toString()),
                               const SizedBox(width: 6),
                             ],
-                            Text(
-                              'ID: $displayUserId',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
-                              ),
+                            UserIdDisplay(
+                              userId: displayUserId,
+                              isIdChanged: provider.isIdChanged,
                             ),
                             if (rightTag != null) ...[
                               const SizedBox(width: 6),
@@ -956,27 +956,6 @@ class RoomBottomSheetContentState extends State<RoomBottomSheetContent>
                           ],
                         );
                       },
-                    ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () async {
-                        await Clipboard.setData(
-                          ClipboardData(text: displayUserId),
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('ID copied'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      },
-                      child: const Icon(
-                        Icons.copy,
-                        size: 14,
-                        color: Colors.black45,
-                      ),
                     ),
                   ],
                 ),

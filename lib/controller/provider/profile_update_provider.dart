@@ -75,6 +75,8 @@ class ProfileUpdateProvider with ChangeNotifier {
   dynamic userCpData;
   Map<String, dynamic>? cpPartnerData;
   String? _userId;
+  bool _isIdChanged = false;
+  String? _displayUserId;
   String? _userName;
   String? _country;
   String? _gender;
@@ -91,6 +93,8 @@ class ProfileUpdateProvider with ChangeNotifier {
   List<String> _tags = []; // ✅ User tags
 
   String? get userId => _userId;
+  bool get isIdChanged => _isIdChanged;
+  String? get displayUserId => _displayUserId ?? _userId;
   String? get username => _userName;
   String? get country => _country;
   String? get gender => _gender;
@@ -107,9 +111,9 @@ class ProfileUpdateProvider with ChangeNotifier {
   bool get isMerchant =>
       _merchant != null && _merchant! > 0; // ✅ Helper to check if merchant
   bool get hasAgencyAvailable {
-    // ✅ Use new agency_info if available, fall back to legacy
+    // ✅ True if user owns an agency OR has joined one as member
     if (_agencyInfo != null) {
-      return _agencyInfo!.hasAgency;
+      return _agencyInfo!.hasAgency || _agencyInfo!.isMember;
     }
     return _isAgencyAvailable != null && _isAgencyAvailable! > 0;
   }
@@ -415,6 +419,51 @@ class ProfileUpdateProvider with ChangeNotifier {
     }
   }
 
+  /// Check if admin changed user ID via get_user_info. Updates session and provider if changed.
+  Future<void> checkUserIdChange() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      dynamic userIdValue = prefs.get('user_id');
+      if (userIdValue == null) return;
+      final currentId = userIdValue is int
+          ? userIdValue.toString()
+          : userIdValue.toString();
+      final idInt = int.tryParse(currentId);
+      if (idInt == null || idInt <= 0) return;
+
+      final data = await ApiManager.getUserInfoWithIdCheck(idInt);
+      if (data == null) return;
+
+      // Robust check: is_id_changed can be bool true, string "true", or int 1
+      final isIdChanged = data['is_id_changed'] == true ||
+          data['is_id_changed'] == 'true' ||
+          data['is_id_changed'] == 1;
+      final newIdVal = data['new_id']?.toString();
+
+      if (isIdChanged && newIdVal != null && newIdVal.isNotEmpty) {
+        await prefs.setString('user_id', newIdVal);
+        _userId = newIdVal;
+        _isIdChanged = true;
+        _displayUserId = newIdVal;
+        await prefs.setBool('user_id_was_changed', true); // Persist for UI
+        print('✅ [ProfileUpdateProvider] User ID updated: $currentId -> $newIdVal (is_id_changed=true)');
+      } else if (isIdChanged && (newIdVal == null || newIdVal.isEmpty)) {
+        // is_id_changed true but no new_id - user found by id, has old_user_id set
+        _isIdChanged = true;
+        _displayUserId = _userId;
+        await prefs.setBool('user_id_was_changed', true);
+        print('✅ [ProfileUpdateProvider] is_id_changed=true (user has old_user_id)');
+      } else {
+        _isIdChanged = await prefs.getBool('user_id_was_changed') ?? false;
+        _displayUserId = null;
+        if (!_isIdChanged) await prefs.remove('user_id_was_changed');
+      }
+      notifyListeners();
+    } catch (e) {
+      print('⚠️ [ProfileUpdateProvider] checkUserIdChange error: $e');
+    }
+  }
+
   Future<void> fetchUserData() async {
     try {
       // ✅ Set loading state
@@ -443,6 +492,10 @@ class ProfileUpdateProvider with ChangeNotifier {
       print("📥 Fetching data for user: $userId");
 
       _userId = userId;
+
+      // ✅ Check if admin changed user ID - update session immediately
+      await checkUserIdChange();
+      userId = _userId ?? userId;
 
       // ✅ FIRST: Try to fetch from backend API (fresh data)
       try {

@@ -339,7 +339,7 @@ class SignUpProvider with ChangeNotifier {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email'],
     serverClientId:
-        '828536498276-494l5kh303de7hk640rkeo4nlh9kc6g4.apps.googleusercontent.com',
+        '729065531351-5tr13doaf36e1ote6atguf8vnke0fm67.apps.googleusercontent.com',
   );
 
   Future<void> googleSignup(BuildContext context) async {
@@ -666,8 +666,9 @@ class SignUpProvider with ChangeNotifier {
       ); // Also save global key
       print('💾 Saved Legacy Agency Availability: ${user.isAgencyAvailable}');
     } else if (user.agencyInfo != null) {
-      // Set legacy value from new structure
-      final legacyValue = user.agencyInfo!.hasAgency ? 1 : 0;
+      // Set legacy value from new structure (owner OR member)
+      final legacyValue =
+          (user.agencyInfo!.hasAgency || user.agencyInfo!.isMember) ? 1 : 0;
       await prefs.setInt('is_agency_available_$userId', legacyValue);
       await prefs.setInt('is_agency_available', legacyValue);
       print('💾 Set Legacy Agency Availability from agency_info: $legacyValue');
@@ -870,6 +871,45 @@ class SignUpProvider with ChangeNotifier {
 
     print('🚪 User logged out successfully');
     notifyListeners();
+  }
+
+  // ✅ Reviewer Login Method used for Google Play Review
+  Future<void> reviewerLogin(BuildContext context) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      print('🔵 Starting Reviewer Login...');
+
+      final loginUser = await ApiManager.reviewLogin();
+
+      if (loginUser != null) {
+        print('🎉 Reviewer logged in successfully - Direct to Home');
+        print('✅ User ID: ${loginUser.id}');
+        await _saveUserData(loginUser, googleId: 'reviewer_${loginUser.id}');
+
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => MainBottomNavScreen()),
+          );
+        }
+      } else {
+        _errorMessage = 'Reviewer Login Failed';
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reviewer Login Failed')),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Reviewer Login Error: $e');
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   //..................Register Functionality....................//

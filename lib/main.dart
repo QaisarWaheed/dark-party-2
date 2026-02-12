@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shaheen_star_app/controller/provider/agency_provider.dart';
 import 'package:shaheen_star_app/controller/provider/backback_provider.dart';
@@ -42,8 +43,9 @@ import 'package:shaheen_star_app/view/screens/login/splash_screen.dart';
 
 import 'controller/provider/bottom_sheet_bg_provider.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env.prod');
   // Defer Firebase init until after first frame so platform channels are ready (fixes channel-error on Android).
   runApp(const _FirebaseInitWrapper());
 }
@@ -388,7 +390,10 @@ class MyApp extends StatelessWidget {
                                     // Background
                                     Positioned.fill(
                                       child: Image.asset(
-                                        'assets/images/lucky_main_patti.png',
+                                        broadcast.giftImage ==
+                                                'assets/images/broadcasting_image.png'
+                                            ? 'assets/images/broadcasting_image.png'
+                                            : 'assets/images/lucky_main_patti.png',
                                         fit: BoxFit.fill,
                                       ),
                                     ),

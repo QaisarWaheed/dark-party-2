@@ -51,11 +51,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDXit5gBx0P_ddcoTnssQ6j_LaDsJqgjrc',
-    appId: '1:828536498276:android:2e02dcfcc71a0996c35771',
-    messagingSenderId: '828536498276',
-    projectId: 'shaheen-star-690f3',
-    storageBucket: 'shaheen-star-690f3.firebasestorage.app',
+    apiKey: 'AIzaSyDjo8v-vTeFzVy457K_JcGX081Q8f-Osco',
+    appId: '1:729065531351:android:0a494bbf65f3b28813cd92',
+    messagingSenderId: '729065531351',
+    projectId: 'dark-party',
+    storageBucket: 'dark-party.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -64,8 +64,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '828536498276',
     projectId: 'shaheen-star-690f3',
     storageBucket: 'shaheen-star-690f3.firebasestorage.app',
-    androidClientId: '828536498276-ad500uk1v30a44l15cr4lverjl5g2eei.apps.googleusercontent.com',
-    iosClientId: '828536498276-l1b99mk1996fub1iegdnkd1pq293g78t.apps.googleusercontent.com',
+    androidClientId:
+        '828536498276-ad500uk1v30a44l15cr4lverjl5g2eei.apps.googleusercontent.com',
+    iosClientId:
+        '828536498276-l1b99mk1996fub1iegdnkd1pq293g78t.apps.googleusercontent.com',
     iosBundleId: 'com.example.shaheenStarApp',
   );
 
@@ -75,7 +77,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '781806715058',
     projectId: 'shaheen-star-app',
     storageBucket: 'shaheen-star-app.firebasestorage.app',
-    iosClientId: '781806715058-a68alh16m42na9ov4p8vfo8sv8jvqd2e.apps.googleusercontent.com',
+    iosClientId:
+        '781806715058-a68alh16m42na9ov4p8vfo8sv8jvqd2e.apps.googleusercontent.com',
     iosBundleId: 'com.example.shaheenStarApp',
   );
 

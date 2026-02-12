@@ -13,7 +13,7 @@ class AgencyWebSocketService {
   bool get isConnected => _isConnected;
 
   // WebSocket URL
-  static const String baseUrl = ApiConstants.agencyWebSocketUrl;
+  static final String baseUrl = ApiConstants.agencyWebSocketUrl;
 
   // Connect to WebSocket
   void connect({
@@ -24,26 +24,28 @@ class AgencyWebSocketService {
   }) {
     try {
       print('🔌 [AgencyWebSocket] Connecting to Agency WebSocket...');
-      print('📍 [AgencyWebSocket] UserID: $userId, Username: $username, Name: $name');
-      
+      print(
+        '📍 [AgencyWebSocket] UserID: $userId, Username: $username, Name: $name',
+      );
+
       // Build URL with parameters
       final uri = Uri.parse(
         '$baseUrl?user_id=$userId&username=${Uri.encodeComponent(username)}&name=${Uri.encodeComponent(name)}${profileUrl != null ? '&profile_url=${Uri.encodeComponent(profileUrl)}' : ''}',
       );
 
       print('🌐 [AgencyWebSocket] Connecting to: $uri');
-      
+
       // Create WebSocket connection
       _channel = WebSocketChannel.connect(uri);
       _isConnected = true;
 
       print('✅ [AgencyWebSocket] WebSocket connected successfully!');
-      
+
       // Setup listener for incoming messages
       _channel!.stream.listen(
         (message) {
           print('📨 [AgencyWebSocket] Received raw message: $message');
-          
+
           // Parse the message to check structure
           try {
             final parsed = json.decode(message);
@@ -51,7 +53,7 @@ class AgencyWebSocketService {
           } catch (e) {
             print('⚠️ [AgencyWebSocket] Could not parse as JSON: $message');
           }
-          
+
           // Forward message to provider
           if (onMessage != null) {
             onMessage!(message);
@@ -83,11 +85,14 @@ class AgencyWebSocketService {
           onConnected!();
         });
       }
-      
     } catch (e) {
       print('❌ [AgencyWebSocket] Connection failed: $e');
-      print('❌ [AgencyWebSocket] Port 8043 might not be running or server is down');
-      print('❌ [AgencyWebSocket] Check if WebSocket server is running on $baseUrl');
+      print(
+        '❌ [AgencyWebSocket] Port 8043 might not be running or server is down',
+      );
+      print(
+        '❌ [AgencyWebSocket] Check if WebSocket server is running on $baseUrl',
+      );
       _isConnected = false;
       if (onError != null) {
         onError!(e);
@@ -123,7 +128,9 @@ class AgencyWebSocketService {
 
   /// Create a new agency
   bool createAgency(int userId, String agencyName) {
-    print('🏢 [AgencyWebSocket] createAgency called: userId=$userId, agencyName=$agencyName');
+    print(
+      '🏢 [AgencyWebSocket] createAgency called: userId=$userId, agencyName=$agencyName',
+    );
     return send({
       'action': 'create_agency',
       'user_id': userId,
@@ -133,7 +140,9 @@ class AgencyWebSocketService {
 
   /// Update an existing agency
   bool updateAgency(int userId, int agencyId, String agencyName) {
-    print('🏢 [AgencyWebSocket] updateAgency called: userId=$userId, agencyId=$agencyId, agencyName=$agencyName');
+    print(
+      '🏢 [AgencyWebSocket] updateAgency called: userId=$userId, agencyId=$agencyId, agencyName=$agencyName',
+    );
     return send({
       'action': 'update_agency',
       'user_id': userId,
@@ -144,7 +153,9 @@ class AgencyWebSocketService {
 
   /// Delete an agency
   bool deleteAgency(int userId, int agencyId) {
-    print('🏢 [AgencyWebSocket] deleteAgency called: userId=$userId, agencyId=$agencyId');
+    print(
+      '🏢 [AgencyWebSocket] deleteAgency called: userId=$userId, agencyId=$agencyId',
+    );
     return send({
       'action': 'delete_agency',
       'user_id': userId,
@@ -155,15 +166,14 @@ class AgencyWebSocketService {
   /// Get a specific agency
   bool getAgency(int agencyId) {
     print('🏢 [AgencyWebSocket] getAgency called: agencyId=$agencyId');
-    return send({
-      'action': 'get_agency',
-      'agency_id': agencyId,
-    });
+    return send({'action': 'get_agency', 'agency_id': agencyId});
   }
 
   /// Get all agencies
   bool getAllAgencies({int limit = 50, int offset = 0}) {
-    print('🏢 [AgencyWebSocket] getAllAgencies called: limit=$limit, offset=$offset');
+    print(
+      '🏢 [AgencyWebSocket] getAllAgencies called: limit=$limit, offset=$offset',
+    );
     return send({
       'action': 'get_all_agencies',
       'limit': limit,
@@ -173,7 +183,9 @@ class AgencyWebSocketService {
 
   /// Add a member to an agency
   bool addMember(int userId, int agencyId, int memberUserId) {
-    print('👤 [AgencyWebSocket] addMember called: userId=$userId, agencyId=$agencyId, memberUserId=$memberUserId');
+    print(
+      '👤 [AgencyWebSocket] addMember called: userId=$userId, agencyId=$agencyId, memberUserId=$memberUserId',
+    );
     return send({
       'action': 'add_member',
       'user_id': userId,
@@ -184,7 +196,9 @@ class AgencyWebSocketService {
 
   /// Remove a member from an agency
   bool removeMember(int userId, int agencyId, int memberUserId) {
-    print('👤 [AgencyWebSocket] removeMember called: userId=$userId, agencyId=$agencyId, memberUserId=$memberUserId');
+    print(
+      '👤 [AgencyWebSocket] removeMember called: userId=$userId, agencyId=$agencyId, memberUserId=$memberUserId',
+    );
     return send({
       'action': 'remove_member',
       'user_id': userId,
@@ -196,42 +210,34 @@ class AgencyWebSocketService {
   /// Get members of an agency
   bool getMembers(int agencyId) {
     print('👥 [AgencyWebSocket] getMembers called: agencyId=$agencyId');
-    return send({
-      'action': 'get_members',
-      'agency_id': agencyId,
-    });
+    return send({'action': 'get_members', 'agency_id': agencyId});
   }
 
   /// Get all users (for member selection)
   bool getAllUsers({int limit = 100, int offset = 0}) {
-    print('👥 [AgencyWebSocket] getAllUsers called: limit=$limit, offset=$offset');
-    return send({
-      'action': 'get_all_users',
-      'limit': limit,
-      'offset': offset,
-    });
+    print(
+      '👥 [AgencyWebSocket] getAllUsers called: limit=$limit, offset=$offset',
+    );
+    return send({'action': 'get_all_users', 'limit': limit, 'offset': offset});
   }
 
   /// Get a specific user
   bool getUser(int userId) {
     print('👤 [AgencyWebSocket] getUser called: userId=$userId');
-    return send({
-      'action': 'get_user',
-      'user_id': userId,
-    });
+    return send({'action': 'get_user', 'user_id': userId});
   }
 
   /// Get agency statistics
   bool getStats() {
     print('📊 [AgencyWebSocket] getStats called');
-    return send({
-      'action': 'get_stats',
-    });
+    return send({'action': 'get_stats'});
   }
 
   /// Join an agency
   bool joinAgency(int userId, int agencyId) {
-    print('🚪 [AgencyWebSocket] joinAgency called: userId=$userId, agencyId=$agencyId');
+    print(
+      '🚪 [AgencyWebSocket] joinAgency called: userId=$userId, agencyId=$agencyId',
+    );
     return send({
       'action': 'join_agency',
       'user_id': userId,
@@ -241,7 +247,9 @@ class AgencyWebSocketService {
 
   /// Leave an agency
   bool leaveAgency(int userId, int agencyId) {
-    print('🚪 [AgencyWebSocket] leaveAgency called: userId=$userId, agencyId=$agencyId');
+    print(
+      '🚪 [AgencyWebSocket] leaveAgency called: userId=$userId, agencyId=$agencyId',
+    );
     return send({
       'action': 'leave_agency',
       'user_id': userId,
@@ -251,7 +259,9 @@ class AgencyWebSocketService {
 
   /// Search agencies
   bool searchAgencies(String searchTerm, {int limit = 20, int offset = 0}) {
-    print('🔍 [AgencyWebSocket] searchAgencies called: searchTerm=$searchTerm, limit=$limit, offset=$offset');
+    print(
+      '🔍 [AgencyWebSocket] searchAgencies called: searchTerm=$searchTerm, limit=$limit, offset=$offset',
+    );
     return send({
       'action': 'search_agencies',
       'search_term': searchTerm,
@@ -260,4 +270,3 @@ class AgencyWebSocketService {
     });
   }
 }
-

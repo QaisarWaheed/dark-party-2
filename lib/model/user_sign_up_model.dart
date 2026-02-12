@@ -237,10 +237,10 @@ class UserSignUpModel {
   // ✅ Helper method to check if user is a merchant
   bool get isMerchant => merchant != null && merchant! > 0;
 
-  // ✅ Helper method to check if agency is available (uses new agency_info if available, falls back to legacy)
+  // ✅ Helper method to check if agency is available (owns OR joined as member)
   bool get hasAgencyAvailable {
     if (agencyInfo != null) {
-      return agencyInfo!.hasAgency;
+      return agencyInfo!.hasAgency || agencyInfo!.isMember;
     }
     return isAgencyAvailable != null && isAgencyAvailable! > 0;
   }

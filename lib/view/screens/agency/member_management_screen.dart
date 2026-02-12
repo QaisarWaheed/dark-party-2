@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shaheen_star_app/controller/api_manager/api_constants.dart';
 import 'package:shaheen_star_app/controller/provider/agency_provider.dart';
 import 'package:shaheen_star_app/view/screens/agency/agency_notification.dart';
+import 'package:shaheen_star_app/view/screens/widget/cached_network_image.dart';
 
 class MemberManagementScreen extends StatefulWidget {
   final int? agencyId;
@@ -31,26 +33,40 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
     
     if (agencyId != null) {
       setState(() => _isLoading = true);
-      await agencyProvider.getMembers(agencyId);
+      await Future.wait([
+        agencyProvider.getMembers(agencyId),
+        agencyProvider.getJoinRequests(agencyId, skipLoadingState: true),
+      ]);
       setState(() => _isLoading = false);
     } else {
       setState(() => _isLoading = false);
     }
   }
 
+  String _normalizeProfileUrl(dynamic url) {
+    if (url == null || url.toString().isEmpty) return '';
+    final s = url.toString().trim();
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    final base = ApiConstants.baseUrl.endsWith('/')
+        ? ApiConstants.baseUrl
+        : '${ApiConstants.baseUrl}/';
+    final path = s.startsWith('/') ? s.substring(1) : s;
+    return '$base$path';
+  }
+
   List<Member> _convertToMembers(List<dynamic> membersData) {
     return membersData.map((member) {
       final memberMap = member is Map ? member : {};
       final joinedAt = memberMap['joined_at'] ?? memberMap['user_created'] ?? '';
-      final profileUrl = memberMap['profile_url'] ?? '';
-      
+      final rawProfile = memberMap['profile_url'] ?? '';
+      final profileUrl = _normalizeProfileUrl(rawProfile);
+      // Use display_id (unique_user_id) for user-facing ID when available
+      final displayId = memberMap['display_id'] ?? memberMap['user_id'] ?? memberMap['id'];
       return Member(
         name: (memberMap['name'] ?? memberMap['username'] ?? 'Unknown').toString(),
-        id: (memberMap['id'] ?? '').toString(),
+        id: (displayId ?? '').toString(),
         joinTime: joinedAt.toString(),
-        avatarImage: profileUrl.toString().isNotEmpty 
-            ? profileUrl.toString() 
-            : 'assets/images/person.png',
+        avatarImage: profileUrl.isNotEmpty ? profileUrl : 'assets/images/person.png',
         country: (memberMap['country'] ?? '').toString(),
       );
     }).toList();
@@ -95,13 +111,24 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    _buildStatItem('20', 'All Hosts', 0, Colors.blue),
-                    _buildStatItem('0', 'Current Anchor', 1, Colors.grey),
-                    _buildStatItem('1', 'Add Hosts', 2, Colors.grey),
-                    _buildStatItem('18', 'Inactive Hosts', 3, Colors.grey),
-                  ],
+                Consumer<AgencyProvider>(
+                  builder: (context, agencyProvider, _) {
+                    final allHostsCount = agencyProvider.agencyMembers.length;
+                    final pendingCount = agencyProvider.joinRequests.length;
+                    // Add Hosts and Inactive Hosts would need backend support
+                    // For now, showing 0 until backend provides this data
+                    final addHostsCount = 0;
+                    final inactiveHostsCount = 0;
+                    
+                    return Row(
+                      children: [
+                        _buildStatItem(allHostsCount.toString(), 'All Hosts', 0, Colors.blue),
+                        _buildStatItem(pendingCount.toString(), 'Pending', 1, Colors.orange),
+                        _buildStatItem(addHostsCount.toString(), 'Add Hosts', 2, Colors.grey),
+                        _buildStatItem(inactiveHostsCount.toString(), 'Inactive Hosts', 3, Colors.grey),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -154,7 +181,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // Members List
+          // Members List or Pending Requests
           Expanded(
             child: Consumer<AgencyProvider>(
               builder: (context, agencyProvider, child) {
@@ -162,6 +189,31 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                // Show pending requests when "Pending" tab (index 1) is selected
+                if (selectedTab == 1) {
+                  final requests = agencyProvider.joinRequests;
+                  if (requests.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No pending join requests',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: requests.length,
+                    itemBuilder: (context, index) {
+                      final request = requests[index];
+                      final reqMap = request is Map<String, dynamic> 
+                          ? request 
+                          : (request is Map ? Map<String, dynamic>.from(request) : <String, dynamic>{});
+                      return _buildJoinRequestCard(reqMap, agencyProvider);
+                    },
+                  );
+                }
+
+                // Show members for other tabs
                 final membersData = agencyProvider.agencyMembers;
                 final members = _convertToMembers(membersData);
 
@@ -239,6 +291,126 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
     );
   }
 
+  Widget _buildJoinRequestCard(Map<String, dynamic> request, AgencyProvider provider) {
+    final userName = request['username'] ?? request['user_name'] ?? 'Unknown User';
+    final userId = request['user_id']?.toString() ?? '';
+    final requestId = request['request_id'] ?? request['id'];
+    final profileUrl = _normalizeProfileUrl(request['profile_url'] ?? '');
+    final requestDate = request['created_at'] ?? request['request_date'] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade200, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.grey.shade300,
+            child: ClipOval(
+              child: profileUrl.isNotEmpty && profileUrl.startsWith('http')
+                  ? SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: cachedImage(profileUrl, fit: BoxFit.cover),
+                    )
+                  : const Icon(Icons.person, size: 32),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // User Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ID: $userId',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                if (requestDate.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Requested: $requestDate',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Accept/Decline Actions
+          Column(
+            children: [
+              ElevatedButton(
+                onPressed: () async {
+                  if (requestId != null) {
+                    await provider.acceptJoinRequest(requestId);
+                    await _loadMembers(); // Refresh the list
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  minimumSize: const Size(80, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Accept', style: TextStyle(fontSize: 12)),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  if (requestId != null) {
+                    await provider.declineJoinRequest(requestId);
+                    await _loadMembers(); // Refresh the list
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  minimumSize: const Size(80, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Decline', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMemberCard(Member member, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
@@ -261,7 +433,22 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
             // Avatar
             CircleAvatar(
               radius: 28,
-              backgroundImage: NetworkImage(member.avatarImage),
+              backgroundColor: Colors.grey.shade300,
+              child: ClipOval(
+                child: member.avatarImage.startsWith('http')
+                    ? SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: cachedImage(member.avatarImage, fit: BoxFit.cover),
+                      )
+                    : Image.asset(
+                        member.avatarImage,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 32),
+                      ),
+              ),
             ),
             const SizedBox(width: 12),
             // Member Info

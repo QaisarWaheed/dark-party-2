@@ -8,6 +8,7 @@ import 'package:shaheen_star_app/controller/api_manager/gift_web_socket_service.
 class BroadcastProvider with ChangeNotifier {
   final GiftWebSocketService _wsService = GiftWebSocketService.instance;
   bool _showBroadcast = false;
+  bool _isExiting = false;
   Timer? _hideTimer;
 
   String _senderName = '';
@@ -19,6 +20,7 @@ class BroadcastProvider with ChangeNotifier {
   double _giftAmount = 0;
 
   bool get isBroadcastVisible => _showBroadcast;
+  bool get isExiting => _isExiting;
   String get senderName => _senderName;
   String get senderProfileUrl => _senderProfileUrl;
   String get receiverName => _receiverName;
@@ -98,8 +100,12 @@ class BroadcastProvider with ChangeNotifier {
             payload['price'],
       );
 
-      // Only show for lucky gifts
-      if (isLucky) {
+      // Show for Lucky gifts OR non-Lucky gifts >= 100k coins (app-wide)
+      final qty = safeInt(payload['quantity']) > 0 ? safeInt(payload['quantity']) : 1;
+      final totalValue = basePrice > 0 ? basePrice * qty : basePrice;
+      final isHighValueNonLucky = !isLucky && totalValue >= 100000;
+
+      if (isLucky || isHighValueNonLucky) {
         print("🔔 [BroadcastProvider] Lucky gift detected! Processing...");
 
         // Massive search for Sender Name
@@ -185,35 +191,33 @@ class BroadcastProvider with ChangeNotifier {
             : (multiplier > 0 && baseTotal > 0)
             ? baseTotal * multiplier
             : baseTotal;
-        if (rewardAmount <= 0 && multiplier <= 0) {
+        if (isLucky && rewardAmount <= 0 && multiplier <= 0) {
           print(
             "⏳ [BroadcastProvider] Lucky gift received without multiplier/result; skipping base-only banner",
           );
           return;
         }
 
-        print("🔇 [BroadcastProvider] Lucky gift detected but BROADCAST IS DISABLED per request (Only Room Banner should show).");
-        return; // EXIT HERE so no broadcast is shown
-
-        /*
         final normalizedSenderAvatar = _normalizeMediaUrl(senderAvatar);
+        final giftImg = isHighValueNonLucky
+            ? 'assets/images/broadcasting_image.png'
+            : _normalizeMediaUrl(giftImageRaw);
+        final displayCoins = isHighValueNonLucky ? totalValue : totalCoins;
 
-        print("🔔 [BroadcastProvider] Showing Broadcast:");
+        print("🔔 [BroadcastProvider] Showing Broadcast (app-wide): Lucky=$isLucky, HighValue=$isHighValueNonLucky");
         print("   Sender: $senderName, Recv: $receiverName");
-        print("   Gift Img: $giftImageRaw, Qty: $quantity");
-        print("   Coins: $totalCoins (base: $baseTotal, x: $multiplier)");
+        print("   Coins: $displayCoins");
 
         showBroadcastOverlay(
           senderName: senderName,
           senderProfileUrl: normalizedSenderAvatar,
           receiverName: receiverName,
           giftName: giftName,
-          giftImage: _normalizeMediaUrl(giftImageRaw),
+          giftImage: giftImg,
           giftCount: quantity,
-          giftAmount: totalCoins,
-          source: 'InternalListener',
+          giftAmount: displayCoins,
+          source: 'BroadcastProvider',
         );
-        */
       } else {
         print(
           "🔔 [BroadcastProvider] Gift ignored (Lucky: $isLucky, Price: $basePrice)",
@@ -260,25 +264,34 @@ class BroadcastProvider with ChangeNotifier {
       print("🔔 [BroadcastProvider] Result -> Mult: $multiplier, Win: $winCoins, Price: $giftPrice -> FINAL: $finalCoins");
 
       if (finalCoins > 0) {
-        print("🔇 [BroadcastProvider] Lucky Result detected but BROADCAST IS DISABLED per request.");
-        /*
-        String senderName = _safeString(payload['sender_name']) ?? _safeString(payload['sender_username']) ?? _senderName;
-        if (senderName.isEmpty) senderName = 'User';
-        
-        String giftName = _safeString(payload['gift_name']) ?? _giftName;
-        if (giftName.isEmpty || giftName == 'Gift') giftName = 'Lucky';
-        
+        final senderName = _safeString(payload['sender_name']) ??
+            _safeString(payload['sender_username']) ??
+            _senderName ??
+            'User';
+        final receiverName = _safeString(payload['receiver_name']) ??
+            _safeString(payload['receiver_username']) ??
+            _receiverName ??
+            'User';
+        final giftName = _safeString(payload['gift_name']) ??
+            _safeString(payload['gift_title']) ??
+            _giftName;
+        final senderAvatar = _safeString(payload['sender_avatar']) ??
+            _safeString(payload['sender_profile_url']) ??
+            _senderProfileUrl;
+        final giftImg = _giftImage.isNotEmpty
+            ? _giftImage
+            : 'assets/images/unnamed__21_-removebg-preview_2.png';
+
         showBroadcastOverlay(
-           senderName: senderName,
-           senderProfileUrl: _senderProfileUrl,
-           receiverName: _receiverName,
-           giftName: giftName,
-           giftImage: _giftImage,
-           giftCount: _giftCount,
-           giftAmount: finalCoins,
-           source: 'LuckyResultHandler',
+          senderName: senderName.isEmpty ? 'User' : senderName,
+          senderProfileUrl: _normalizeMediaUrl(senderAvatar),
+          receiverName: receiverName.isEmpty ? 'User' : receiverName,
+          giftName: giftName.isEmpty ? 'Lucky' : giftName,
+          giftImage: giftImg,
+          giftCount: _giftCount,
+          giftAmount: finalCoins,
+          source: 'LuckyResultHandler',
         );
-        */
       }
     }
 
@@ -379,6 +392,7 @@ class BroadcastProvider with ChangeNotifier {
     );
 
     _hideTimer?.cancel();
+    _isExiting = false;
     _senderName = finalSender;
     _senderProfileUrl = senderProfileUrl;
     _receiverName = finalReceiver;
@@ -390,24 +404,37 @@ class BroadcastProvider with ChangeNotifier {
     notifyListeners();
 
     _hideTimer = Timer(duration, () {
-      _showBroadcast = false;
-      _senderName = '';
-      _senderProfileUrl = '';
-      _receiverName = '';
-      _giftName = '';
-      _giftImage = '';
-      _giftCount = 1;
-      _giftAmount = 0;
-      _hideTimer = null;
-      notifyListeners();
+      requestHide();
     });
   }
 
-  void hideBroadcast() {
+  /// Request hide (starts exit animation). Call completeHide() when animation done.
+  void requestHide() {
+    if (_isExiting || !_showBroadcast) return;
+    _hideTimer?.cancel();
+    _hideTimer = null;
+    _isExiting = true;
+    notifyListeners();
+  }
+
+  /// Call when exit animation is complete.
+  void completeHide() {
     _hideTimer?.cancel();
     _hideTimer = null;
     _showBroadcast = false;
+    _isExiting = false;
+    _senderName = '';
+    _senderProfileUrl = '';
+    _receiverName = '';
+    _giftName = '';
+    _giftImage = '';
+    _giftCount = 1;
+    _giftAmount = 0;
     notifyListeners();
+  }
+
+  void hideBroadcast() {
+    requestHide();
   }
 
   @override

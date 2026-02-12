@@ -64,8 +64,8 @@ class AgencyProvider extends ChangeNotifier {
 
       print('✅ [AgencyProvider] Session verified: UserID=${_session.userId}');
 
-      // Load user's agency from SharedPreferences first (from login response)
-      await _loadUserAgencyFromStorage();
+      // Clear any stale agency data first
+      _userAgency = null;
 
       // Load initial data via HTTP API - run in parallel for faster loading
       await Future.wait([
@@ -73,9 +73,31 @@ class AgencyProvider extends ChangeNotifier {
         getStats(),
       ]);
 
-      // If user has an agency but not loaded, fetch it
-      if (_userAgency == null && _session.userId != null) {
-        await _fetchUserAgency();
+      // Fetch and validate: use get_my_agency as source of truth
+      if (_session.userId != null) {
+        print('🔍 [AgencyProvider] Fetching user agency for UserID=${_session.userId}');
+        final response = await ApiManager.getMyAgency(userId: _session.userId!);
+        print('📡 [AgencyProvider] API Response: ${response != null ? response['status'] : 'null'}');
+        
+        if (response != null && response['status'] == 'success') {
+          if (response['data'] != null) {
+            _userAgency = Map<String, dynamic>.from(response['data']);
+            print('✅ [AgencyProvider] User has agency: ${_userAgency?['agency_name']} (ID: ${_userAgency?['id']})');
+          } else {
+            _userAgency = null;
+            // Clear stale cache when user has no agency
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('agency_info_${_session.userId}');
+            await prefs.remove('agency_info');
+            print('ℹ️ [AgencyProvider] No agency found - cleared cache, user will see agency list');
+          }
+          notifyListeners();
+        } else {
+          // API error - keep userAgency as null, don't load from cache
+          _userAgency = null;
+          print('⚠️ [AgencyProvider] API error - keeping userAgency as null');
+          notifyListeners();
+        }
       }
 
       print('✅ [AgencyProvider] Agency initialization completed');
@@ -685,11 +707,36 @@ class AgencyProvider extends ChangeNotifier {
       
       if (agencyInfoJson != null) {
         final agencyInfo = jsonDecode(agencyInfoJson);
-        if (agencyInfo['has_agency'] == true || agencyInfo['has_agency'] == 1) {
-          final agencyDetails = agencyInfo['agency_details'];
-          if (agencyDetails != null) {
-            _userAgency = Map<String, dynamic>.from(agencyDetails);
-            print('✅ [AgencyProvider] Loaded user agency from storage: ${_userAgency?['agency_name']}');
+        // User owns an agency (agency_details from backend, owned_agency from model toJson)
+        final agencyDetails = agencyInfo['agency_details'] ?? agencyInfo['owned_agency'];
+        if ((agencyInfo['has_agency'] == true || agencyInfo['has_agency'] == 1) &&
+            agencyDetails != null) {
+          _userAgency = Map<String, dynamic>.from(agencyDetails);
+          if (_userAgency!['id'] == null && _userAgency!['agency_id'] != null) {
+            _userAgency!['id'] = _userAgency!['agency_id'];
+          }
+          // Storage agency_details lacks user_id - set it so owner gets admin page
+          if (_userAgency!['user_id'] == null && _session.userId != null) {
+            _userAgency!['user_id'] = _session.userId;
+          }
+          print('✅ [AgencyProvider] Loaded owned agency from storage: ${_userAgency?['agency_name']}');
+          notifyListeners();
+          return;
+        }
+        // User joined an agency (member_agencies from backend, agencies from model toJson)
+        final memberAgencies = agencyInfo['member_agencies'] ?? agencyInfo['agencies'];
+        final isMember = agencyInfo['is_member_of_agency'] == true ||
+            agencyInfo['is_member_of_agency'] == 1 ||
+            agencyInfo['is_member'] == true ||
+            agencyInfo['is_member'] == 1;
+        if (isMember && memberAgencies != null && memberAgencies is List && memberAgencies.isNotEmpty) {
+          final first = memberAgencies.first;
+          if (first is Map) {
+            _userAgency = Map<String, dynamic>.from(first);
+            if (_userAgency!['id'] == null && _userAgency!['agency_id'] != null) {
+              _userAgency!['id'] = _userAgency!['agency_id'];
+            }
+            print('✅ [AgencyProvider] Loaded joined agency from storage: ${_userAgency?['agency_name']}');
             notifyListeners();
           }
         }
@@ -699,25 +746,30 @@ class AgencyProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch user's agency from API if not in storage
+  // Fetch user's agency from API if not in storage (owner OR member)
   Future<void> _fetchUserAgency() async {
     try {
       if (_session.userId == null) return;
 
-      // Check if user owns an agency by searching in agencies list
+      // First check if user owns an agency in the agencies list (already loaded)
       try {
-        final userAgency = _agencies.firstWhere(
+        final owned = _agencies.firstWhere(
           (agency) => agency is Map && (agency['user_id'] == _session.userId),
         );
+        _userAgency = Map<String, dynamic>.from(owned);
+        print('✅ [AgencyProvider] Found owned agency in agencies list');
+        notifyListeners();
+        return;
+      } catch (_) {}
 
-        if (userAgency != null) {
-          _userAgency = Map<String, dynamic>.from(userAgency);
-          print('✅ [AgencyProvider] Found user agency in agencies list');
-          notifyListeners();
-        }
-      } catch (e) {
-        // No agency found in list
-        print('ℹ️ [AgencyProvider] User agency not found in agencies list');
+      // Call get_my_agency API (handles owner + member in one query)
+      final response = await ApiManager.getMyAgency(userId: _session.userId!);
+      if (response != null && response['status'] == 'success' && response['data'] != null) {
+        _userAgency = Map<String, dynamic>.from(response['data']);
+        print('✅ [AgencyProvider] Fetched user agency via get_my_agency API');
+        notifyListeners();
+      } else {
+        print('ℹ️ [AgencyProvider] User has no agency (owner or member)');
       }
     } catch (e) {
       print('⚠️ [AgencyProvider] Error fetching user agency: $e');

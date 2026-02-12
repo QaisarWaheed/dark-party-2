@@ -16,6 +16,7 @@ import 'package:shaheen_star_app/controller/provider/store_provider.dart';
 import 'package:shaheen_star_app/controller/provider/user_follow_provider.dart';
 import 'package:shaheen_star_app/view/screens/VIP/vip_reward_screen.dart';
 import 'package:shaheen_star_app/view/screens/agency/agency_profile_center_screen.dart';
+import 'package:shaheen_star_app/view/screens/agency/my_agency_view_screen.dart';
 import 'package:shaheen_star_app/view/screens/agency/all_agency_screen.dart';
 // Removed unused imports
 import 'package:shaheen_star_app/view/screens/level/level_description_screen.dart';
@@ -31,6 +32,7 @@ import 'package:shaheen_star_app/view/screens/profile/personal_info_screen.dart'
 // removed unused backpack import
 import 'package:shaheen_star_app/view/screens/store/store_screen.dart';
 import 'package:shaheen_star_app/view/screens/widget/robust_animated_image.dart';
+import 'package:shaheen_star_app/view/widgets/user_id_display.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 // removed unused withdraw provider import
@@ -66,13 +68,21 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
   final PageController _rechargeBannerPageController = PageController();
   Timer? _rechargeBannerTimer;
 
+  Timer? _idCheckTimer;
+
   @override
   void initState() {
     super.initState();
+    _idCheckTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      Provider.of<ProfileUpdateProvider>(context, listen: false)
+          .checkUserIdChange();
+    });
   }
 
   @override
   void dispose() {
+    _idCheckTimer?.cancel();
     _rechargeBannerTimer?.cancel();
     _rechargeBannerPageController.dispose();
     super.dispose();
@@ -250,29 +260,10 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  // ID with Copy Icon
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "ID: $userId",
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () {
-                                          // Copy ID to clipboard
-                                        },
-                                        child: const Icon(
-                                          Icons.copy_outlined,
-                                          size: 16,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
+                                  // ID with Copy Icon (uses newid.svg when admin changed ID)
+                                  UserIdDisplay(
+                                    userId: provider.displayUserId ?? userId,
+                                    isIdChanged: provider.isIdChanged,
                                   ),
                                   const SizedBox(height: 8),
                                   // Badges Row – left aligned
@@ -437,6 +428,123 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                         );
                       },
                     ),
+                  ),
+
+                  // Agency Banner
+                  Consumer<AgencyProvider>(
+                    builder: (context, agencyProvider, _) {
+                      final userAgency = agencyProvider.userAgency;
+                      if (userAgency != null) {
+                        final agencyName = userAgency['agency_name'] ?? userAgency['name'] ?? '';
+                        final agencyCode = userAgency['agency_code'] ?? userAgency['id'] ?? '';
+                        final agencyLogo = userAgency['logo_url'] ?? userAgency['logo'] ?? '';
+                        final ownerCountry = userAgency['owner_country'] ?? userAgency['country'] ?? '';
+                        
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            image: const DecorationImage(
+                              image: AssetImage('assets/images/agency_search.png'),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                // Agency Logo
+                                if (agencyLogo.isNotEmpty && agencyLogo.startsWith('http'))
+                                  ClipOval(
+                                    child: Image.network(
+                                      agencyLogo,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[300],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                  ),
+                                const SizedBox(width: 12),
+                                // Agency Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        agencyName,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          if (ownerCountry.isNotEmpty)
+                                            Text(
+                                              ownerCountry,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                          if (ownerCountry.isNotEmpty && agencyCode.isNotEmpty)
+                                            const SizedBox(width: 8),
+                                          if (agencyCode.isNotEmpty)
+                                            Text(
+                                              'ID: $agencyCode',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Arrow or Action
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => AgencyProfileCenterScreen(agency: userAgency),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink(); // Hide if no agency
+                    },
                   ),
 
                   // Recharge Weekly – same backend banners as Home screen
@@ -935,14 +1043,18 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                             );
                             final userAgency = agencyProvider.userAgency;
                             if (userAgency != null) {
+                              final agency = Map<String, dynamic>.from(userAgency);
+                              final currentUserId = agencyProvider.currentUserId;
+                              final ownerId = agency['user_id'] ?? agency['owner_id'];
+                              final isOwner = currentUserId != null &&
+                                  ownerId != null &&
+                                  currentUserId.toString() == ownerId.toString();
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => AgencyProfileCenterScreen(
-                                    agency: Map<String, dynamic>.from(
-                                      userAgency,
-                                    ),
-                                  ),
+                                  builder: (_) => isOwner
+                                      ? AgencyProfileCenterScreen(agency: agency)
+                                      : MyAgencyViewScreen(agency: agency),
                                 ),
                               );
                             } else {
@@ -1121,14 +1233,18 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                     );
                                 final userAgency = agencyProvider.userAgency;
                                 if (userAgency != null) {
+                                  final agency = Map<String, dynamic>.from(userAgency);
+                                  final currentUserId = agencyProvider.currentUserId;
+                                  final ownerId = agency['user_id'] ?? agency['owner_id'];
+                                  final isOwner = currentUserId != null &&
+                                      ownerId != null &&
+                                      currentUserId.toString() == ownerId.toString();
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => AgencyProfileCenterScreen(
-                                        agency: Map<String, dynamic>.from(
-                                          userAgency,
-                                        ),
-                                      ),
+                                      builder: (_) => isOwner
+                                          ? AgencyProfileCenterScreen(agency: agency)
+                                          : MyAgencyViewScreen(agency: agency),
                                     ),
                                   );
                                 } else {

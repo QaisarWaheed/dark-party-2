@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shaheen_star_app/components/app_image.dart';
 import 'package:shaheen_star_app/controller/provider/agency_provider.dart';
-import 'package:shaheen_star_app/view/screens/agency/all_agency_screen.dart';
-import 'package:shaheen_star_app/view/screens/agency/join_quite_request_page.dart';
-
+import 'package:shaheen_star_app/controller/api_manager/api_constants.dart';
+import 'package:shaheen_star_app/controller/api_manager/api_manager.dart';
+import 'package:shaheen_star_app/view/screens/agency/host_center_screen.dart';
+import 'package:shaheen_star_app/view/screens/agency/member_management_screen.dart';
+import 'package:shaheen_star_app/view/screens/merchant/wallet_screen.dart';
+import 'package:shaheen_star_app/view/screens/widget/cached_network_image.dart';
+import 'package:shaheen_star_app/utils/country_utils.dart';
 class AgencyProfileCenterScreen extends StatefulWidget {
   final Map<String, dynamic> agency;
 
@@ -20,6 +24,9 @@ class AgencyProfileCenterScreen extends StatefulWidget {
 
 class _AgencyProfileCenterScreenState extends State<AgencyProfileCenterScreen> {
   bool _didRequestData = false;
+  Map<String, dynamic>? _enrichedAgency;
+
+  Map<String, dynamic> get _agency => _enrichedAgency ?? widget.agency;
 
   @override
   void didChangeDependencies() {
@@ -28,9 +35,9 @@ class _AgencyProfileCenterScreenState extends State<AgencyProfileCenterScreen> {
     if (_didRequestData) return;
     _didRequestData = true;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final agencyProvider = context.read<AgencyProvider>();
-      final agencyIdValue = widget.agency['id'] ?? widget.agency['agency_id'];
+      final agencyIdValue = _agency['id'] ?? _agency['agency_id'];
       final agencyId = agencyIdValue is int
           ? agencyIdValue
           : int.tryParse(agencyIdValue?.toString() ?? '');
@@ -38,6 +45,41 @@ class _AgencyProfileCenterScreenState extends State<AgencyProfileCenterScreen> {
       agencyProvider.getStats();
       if (agencyId != null) {
         agencyProvider.getMembers(agencyId);
+        // Fetch full agency to get total_diamond_coins, logo_url, owner_country, member_count, etc.
+        var response = await ApiManager.getAgency(agencyId: agencyId);
+        var data = response != null && response['status'] == 'success'
+            ? response['data'] as Map<String, dynamic>?
+            : null;
+        // Fallback: get_all returns total_diamond_coins; get may not - fetch from get_all if missing
+        final hasDiamonds = data != null &&
+            (data['total_diamond_coins'] != null ||
+                data['period_15_days_diamond_coins'] != null);
+        if (mounted && !hasDiamonds) {
+          final allRes = await ApiManager.getAllAgenciesViaManager(limit: 100);
+          if (allRes != null &&
+              allRes['status'] == 'success' &&
+              allRes['data'] != null) {
+            final agencies = (allRes['data'] as Map)['agencies'] as List?;
+            if (agencies != null) {
+              for (final a in agencies) {
+                final m = a is Map ? a : {};
+                final aid = m['id'] ?? m['agency_id'];
+                if (aid != null &&
+                    (aid == agencyId ||
+                        aid.toString() == agencyId.toString())) {
+                  data = {...?data, ...Map<String, dynamic>.from(m)};
+                  break;
+                }
+              }
+            }
+          }
+        }
+        if (mounted && data != null) {
+          final merged = Map<String, dynamic>.from(widget.agency)..addAll(data);
+          setState(() {
+            _enrichedAgency = merged;
+          });
+        }
       }
     });
   }
@@ -65,687 +107,429 @@ class _AgencyProfileCenterScreenState extends State<AgencyProfileCenterScreen> {
     return fallback;
   }
 
+  String _normalizeProfileUrl(dynamic url) {
+    if (url == null || url.toString().isEmpty) return '';
+    final s = url.toString().trim();
+    // Reject invalid URLs (admin pages, placeholders - not image URLs)
+    if (s.contains('AgencyManagment') ||
+        (s.contains('admin/') && !s.contains('/uploads/')) ||
+        s.endsWith('#')) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    final base = ApiConstants.baseUrl.endsWith('/') ? ApiConstants.baseUrl : '${ApiConstants.baseUrl}/';
+    final path = s.startsWith('/') ? s.substring(1) : s;
+    return '$base$path';
+  }
+
+  String _formatLargeNumber(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[^\d.]'), '');
+    final num = double.tryParse(cleaned) ?? int.tryParse(cleaned) ?? 0;
+    final n = num.toDouble();
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(2)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(2)}K';
+    if (n >= 1) return n.toInt().toString();
+    // For 0 or values < 1, return the integer part
+    return n.toInt().toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isSmallScreen = size.width < 360;
     final agencyProvider = context.watch<AgencyProvider>();
     final stats = agencyProvider.stats;
 
-    // Extract agency data
     final agencyName =
-        (widget.agency['agency_name'] ?? widget.agency['name'] ?? 'Unknown Agency')
+        (_agency['agency_name'] ?? _agency['name'] ?? 'Unknown Agency')
             .toString();
     final agencyCode =
-        (widget.agency['agency_code'] ?? widget.agency['id'] ?? '').toString();
-    final agencyId = widget.agency['id'] ?? widget.agency['agency_id'];
+        (_agency['agency_code'] ?? _agency['id'] ?? '').toString();
+    final agencyId = _agency['id'] ?? _agency['agency_id'];
+    // Real owner user ID: prefer display ID (unique_user_id), then owner_id/user_id - never agency code
+    final ownerId = (_agency['owner_display_id'] ??
+            _agency['owner_id'] ??
+            _agency['user_id'])
+        ?.toString() ?? '';
+    // Owner's country (from users table) for the flag; fallback to agency country
+    final agencyCountry = _agency['owner_country'] ??
+        _agency['country'] ??
+        _agency['agency_country'];
+    // Agency owner's profile image (person who owns the agency) - show on right of top card
+    final rawOwnerProfile = _agency['owner_profile_url'] ??
+        _agency['owner_avatar'] ??
+        _agency['owner_profile'];
+    final rawAgencyLogo = _agency['logo_url'] ??
+        _agency['logo'] ??
+        _agency['agency_logo'] ??
+        _agency['profile_url'];
+    // Prefer agency logo for agency profile; fallback to owner profile
+    final ownerProfileUrl = _normalizeProfileUrl(rawAgencyLogo ?? rawOwnerProfile);
 
-    // Stats data
-    final monthLabel =
-        '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}';
-    final totalSalary = _getStatString(
+    // Total Score / Diamonds: prefer agency-level data, then stats
+    final totalSalaryFromStats = _getStatString(
       stats,
       ['total_salary', 'salary', 'monthly_salary'],
     );
-    final totalGiftGoldCoins = _getStatString(
+    final totalGiftFromStats = _getStatString(
       stats,
       ['total_gift_gold_coins', 'gift_gold_coins', 'total_gift_coins', 'gift_coins'],
     );
-    final compareLastMonth = _getStatString(
-      stats,
-      ['compare_last_month', 'compare_last_month_percent', 'compare_percent'],
-      fallback: '0',
+    final totalSalaryFromAgency = _getStatString(
+      _agency,
+      ['total_salary', 'salary', 'monthly_salary'],
+    );
+    final totalGiftFromAgency = _getStatString(
+      _agency,
+      ['total_diamond_coins', 'period_15_days_diamond_coins', 'total_gift_gold_coins', 'gift_gold_coins', 'total_gift_coins', 'gift_coins', 'total_score', 'diamonds'],
+    );
+    
+    final totalGiftGoldCoins = totalGiftFromAgency.isNotEmpty
+        ? totalGiftFromAgency
+        : totalGiftFromStats;
+    final totalSalary = totalSalaryFromAgency.isNotEmpty
+        ? totalSalaryFromAgency
+        : totalSalaryFromStats;
+    final totalScore = _formatLargeNumber(totalGiftGoldCoins.isNotEmpty ? totalGiftGoldCoins : totalSalary);
+    final agencyRating = _getStatString(
+      _agency,
+      ['agency_rating', 'rating'],
+      fallback: _getStatString(stats, ['agency_rating', 'rating'], fallback: '-'),
     );
 
-    // Host management data
-    final membersCount = agencyProvider.agencyMembers.length;
+    final membersFromApi = _getStatInt(_agency, ['member_count'], fallback: -1);
+    final membersCount = membersFromApi >= 0
+        ? membersFromApi
+        : agencyProvider.agencyMembers.length;
     final broadcastingCount = _getStatInt(
-      stats,
-      ['broadcasting_hosts', 'currently_broadcasting', 'online_hosts'],
+      _agency,
+      ['currently_broadcasting', 'broadcasting_hosts', 'online_hosts'],
+      fallback: _getStatInt(stats, ['broadcasting_hosts', 'currently_broadcasting', 'online_hosts']),
     );
     final addHostsCount = _getStatInt(
-      stats,
+      _agency,
       ['add_hosts', 'new_hosts', 'hosts_added'],
+      fallback: _getStatInt(stats, ['add_hosts', 'new_hosts', 'hosts_added']),
     );
-    final inactiveHostsCount = _getStatInt(
-      stats,
+    final inactiveFromAgency = _getStatInt(
+      _agency,
       ['inactive_hosts', 'inactive_members'],
-      fallback: membersCount > 0 ? membersCount - broadcastingCount : 0,
+      fallback: -1,
     );
+    final inactiveHostsCount = inactiveFromAgency >= 0
+        ? inactiveFromAgency
+        : (membersCount > 0 ? membersCount - broadcastingCount : 0);
 
-    print(
-        '🏢 [AgencyProfileCenterScreen] Building screen for agency: $agencyName (ID: $agencyId)');
+    const darkBg = Color(0xFF2C2C2E);
+    const goldColor = Color(0xFFFFD700);
+    const topCardTextColor = Color(0xFFD99724);
+    const menuItemBg = Color(0xFFF5F0E6);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: darkBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: darkBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () { Navigator.pop(context); },
+          icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Agency Center',
+          'My Agency',
           style: TextStyle(
-            color: Colors.black,
+            color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
-        
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Purple Header Card
-            Container(
-              margin: EdgeInsets.all(size.width * 0.04),
+            // Gold-themed dashboard card (agency_dashboard_card.svg)
+            Padding(
               padding: EdgeInsets.all(size.width * 0.04),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF7B4FFF),
-                    Color(0xFF6B3FEF),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  // Profile and Agency Info
-                  Row(
-                    children: [
-                      Container(
-                        width: size.width * 0.14,
-                        height: size.width * 0.14,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: ClipOval(
-                          child: Container(
-                            color: Colors.white.withOpacity(0.3),
-                            child: const Icon(Icons.business, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: size.width * 0.03),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              agencyName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              agencyCode,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: size.height * 0.02),
-
-                  // This month's data section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'This month\'s data($monthLabel)',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {},
-                        child: const Row(
-                          children: [
-                            Text(
-                              'View Details',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: size.height * 0.015),
-
-                  // Stats Container
-                  Container(
-                    padding: EdgeInsets.all(size.width * 0.04),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: size.height * 0.165,
+                  width: double.infinity,
+                  child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage.asset(
+                      'assets/images/agency_dashboard_card.png',
+                      fit: BoxFit.cover,
                     ),
-                    child: Column(
-                      children: [
-                        // Total salary row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Total salary',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFFD700),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: AppImage.asset(
-                                      'assets/images/coinsicon.png',
-                                      width: 14,
-                                      height: 14,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  totalSalary,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        const Divider(color: Colors.white24, height: 24),
-
-                        // Total gift gold coins row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Total gift gold coins received',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFFFD700),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.card_giftcard,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  totalGiftGoldCoins,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Compare last month
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            'Compare last month: $compareLastMonth%',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: size.height * 0.015),
-
-                  // Wallet and Policy buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.account_balance_wallet, 
-                                color: Color(0xFF7B4FFF), size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Wallet',
-                                style: TextStyle(
-                                  color: Color(0xFF7B4FFF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_ios, 
-                                color: Color(0xFF7B4FFF), size: 14),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: size.width * 0.03),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.description, 
-                                color: Color(0xFF7B4FFF), size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Policy',
-                                style: TextStyle(
-                                  color: Color(0xFF7B4FFF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_ios, 
-                                color: Color(0xFF7B4FFF), size: 14),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Banner Image
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: size.width * 0.04),
-              height: size.height * 0.12,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7B4FFF), Color(0xFF6B3FEF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  'Agency Recruitment Plan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 18 : 22,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: size.height * 0.02),
-
-            // Host Management Section
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: size.width * 0.04),
-              padding: EdgeInsets.all(size.width * 0.04),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Host management',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Row(
+                    Padding(
+                      padding: EdgeInsets.all(size.width * 0.04),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.people, color: Colors.grey[400], size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            membersCount.toString(),
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Total Score',
+                                    style: TextStyle(
+                                      color: topCardTextColor,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.diamond, color: Colors.purple[300], size: 22),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        totalScore,
+                                        style: const TextStyle(
+                                          color: topCardTextColor,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.white24,
+                                    child: ownerProfileUrl.isNotEmpty
+                                        ? ClipOval(
+                                            child: SizedBox(
+                                              width: 40,
+                                              height: 40,
+                                              child: cachedImage(
+                                                ownerProfileUrl,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          )
+                                        : const Icon(Icons.person, color: Colors.white70, size: 24),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ownerId.isNotEmpty ? 'ID: $ownerId' : 'ID: —',
+                                    style: TextStyle(
+                                      color: topCardTextColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'Agency Country',
+                                        style: TextStyle(
+                                          color: topCardTextColor,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      CountryUtils.getCountryFlag(agencyCountry, width: 20, height: 14),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios, 
-                            color: Colors.grey[400], size: 14),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              Text(
+                                'Agency Rating: ',
+                                style: TextStyle(
+                                  color: topCardTextColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                agencyRating,
+                                style: const TextStyle(
+                                  color: topCardTextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ),
+
+            // Menu items (7 rows with agency_first_row to agency_seventh_row)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: size.width * 0.04),
+              child: Column(
+                children: [
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_first_row.png',
+                    label: 'Number of Agency members ($membersCount)',
+                    onTap: () => _navigateToMembers(context),
                   ),
-
-                  SizedBox(height: size.height * 0.02),
-
-                  // Stats Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              'Currently\nbroadcasting',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              broadcastingCount.toString(),
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_second_row.png',
+                    label: 'Currently broadcasting ($broadcastingCount)',
+                    onTap: () => _navigateToMembers(context),
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_third_row.png',
+                    label: 'Add Hosts ($addHostsCount)',
+                    onTap: () => _navigateToMembers(context),
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_fourth_row.png',
+                    label: 'Inactive Hosts ($inactiveHostsCount)',
+                    onTap: () => _navigateToMembers(context),
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_fifth_row.png',
+                    label: 'Wallet',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const WalletScreen(),
                       ),
-                      Container(
-                        width: 1,
-                        height: 50,
-                        color: Colors.grey[300],
+                    ),
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_sixth_row.png',
+                    label: 'Policy',
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Policy - Coming soon')),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/images/agency_seventh_row.png',
+                    label: 'Agency Recruitment Plan',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HostCenterScreen(),
                       ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              'Add Hosts',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              addHostsCount.toString(),
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 50,
-                        color: Colors.grey[300],
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              'Inactive Hosts',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              inactiveHostsCount.toString(),
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            SizedBox(height: size.height * 0.02),
-
-            // Action Buttons
-            Consumer<AgencyProvider>(
-              builder: (context, agencyProvider, child) {
-                final currentUserId = agencyProvider.currentUserId;
-                final agencyOwnerId = widget.agency['user_id'];
-                final isOwner = currentUserId != null && agencyOwnerId == currentUserId;
-                
-                print('🏢 [AgencyProfileCenterScreen] Current User ID: $currentUserId, Agency Owner ID: $agencyOwnerId, Is Owner: $isOwner');
-                
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.04),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            InkWell(
-                              onTap: isOwner
-                                  ? () {
-                                      // Owner: View requests
-                                      print('🏢 [AgencyProfileCenterScreen] Owner clicked "Host Application" button');
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => JoinQuiteRequestPage(
-                                            agencyId: agencyId,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : () async {
-                                      // Non-owner: Create join request
-                                      print('🏢 [AgencyProfileCenterScreen] Non-owner clicked "Join Agency" button for agency ID: $agencyId');
-                                      if (agencyId == null) {
-                                        print('❌ [AgencyProfileCenterScreen] Invalid agency ID');
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Invalid agency ID')),
-                                        );
-                                        return;
-                                      }
-                                      
-                                      print('📋 [AgencyProfileCenterScreen] Creating join request...');
-                                      final loadingSnackbar = ScaffoldMessenger.of(context)
-                                        ..showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Sending join request...'),
-                                            duration: Duration(seconds: 1),
-                                          ),
-                                        );
-                                      
-                                      await agencyProvider.createJoinRequest(agencyId);
-                                      
-                                      if (context.mounted) {
-                                        loadingSnackbar.hideCurrentSnackBar();
-                                        final message = agencyProvider.error ?? 'Join request sent successfully';
-                                        print('📋 [AgencyProfileCenterScreen] Join request result: $message');
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(message),
-                                            backgroundColor: agencyProvider.error != null
-                                                ? Colors.red
-                                                : Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    },
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8D5FF),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      isOwner ? Icons.person_add : Icons.how_to_reg,
-                                      color: const Color(0xFF7B4FFF),
-                                      size: 28,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      isOwner ? 'Host Application' : 'Join Agency',
-                                      style: const TextStyle(
-                                        color: Color(0xFF7B4FFF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (isOwner && agencyProvider.joinRequests.isNotEmpty)
-                              Positioned(
-                                top: 0,
-                                right: 10,
-                                child: Container(
-                                  height: 16,
-                                  width: 16,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${agencyProvider.joinRequests.length}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+            // Footer with agency name
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.04,
+                vertical: size.height * 0.03,
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  vertical: size.height * 0.02,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3A3A3C),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      agencyName,
+                      style: TextStyle(
+                        color: goldColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(width: size.width * 0.03),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AllAgencyScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8D5FF),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Column(
-                              children: [
-                                Icon(Icons.mail, color: Color(0xFFFF6B9D), size: 28),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Initiate invitation',
-                                  style: TextStyle(
-                                    color: Color(0xFF7B4FFF),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Agency Code: $agencyCode',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
                       ),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  ],
+                ),
+              ),
             ),
-
-            SizedBox(height: size.height * 0.02),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToMembers(BuildContext context) {
+    final agencyIdValue = _agency['id'] ?? _agency['agency_id'];
+    final agencyId = agencyIdValue is int
+        ? agencyIdValue
+        : int.tryParse(agencyIdValue?.toString() ?? '');
+    if (agencyId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MemberManagementScreen(agencyId: agencyId),
+        ),
+      );
+    }
+  }
+
+  Widget _buildMenuItem({
+    required String icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFFF5F0E6),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: AppImage.asset(icon, fit: BoxFit.contain),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: Colors.grey[500], size: 24),
+              ],
+            ),
+          ),
         ),
       ),
     );

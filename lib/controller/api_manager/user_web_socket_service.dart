@@ -29,7 +29,7 @@
 //     try {
 //       print('🔌 Connecting to WebSocket...');
 //       print('📍 UserID: $userId, Username: $username, Name: $name');
-      
+
 //       final uri = Uri.parse(
 //         '$baseUrl?user_id=$userId&username=${Uri.encodeComponent(username)}&name=${Uri.encodeComponent(name)}&profile_url=${Uri.encodeComponent(profileUrl ?? "")}',
 //       );
@@ -38,7 +38,7 @@
 //       _isConnected = true;
 
 //       print('✅ WebSocket connected!');
-      
+
 //       // Listen to messages with better error handling
 //       _channel!.stream.listen(
 //         (message) {
@@ -73,9 +73,9 @@
 //         },
 //         cancelOnError: false,
 //       );
-      
+
 //       onConnected?.call();
-      
+
 //     } catch (e) {
 //       print('❌ Connection failed: $e');
 //       _isConnected = false;
@@ -156,7 +156,6 @@
 //   }
 // }
 
-
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
@@ -167,7 +166,8 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class UserChatWebSocket {
   WebSocketChannel? _channel;
   Function(dynamic)? onMessage;
-  final List<Function(dynamic)> _messageListeners = []; // Support multiple listeners
+  final List<Function(dynamic)> _messageListeners =
+      []; // Support multiple listeners
   Function()? onConnected;
   Function()? onDisconnected;
   Function(dynamic)? onError;
@@ -176,21 +176,32 @@ class UserChatWebSocket {
   bool get isConnected => _isConnected;
 
   // ========== STREAM CONTROLLERS FOR EVENTS ==========
-  final _chatRoomsController = StreamController<Map<String, dynamic>>.broadcast();
-  final _messagesController = StreamController<Map<String, dynamic>>.broadcast();
-  final _userSearchController = StreamController<Map<String, dynamic>>.broadcast();
-  final _followStatusController = StreamController<Map<String, dynamic>>.broadcast();
-  
+  final _chatRoomsController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _messagesController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _userSearchController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _followStatusController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
   // Voice chat controllers
-  final _voiceSignalController = StreamController<Map<String, dynamic>>.broadcast();
-  final _voiceAudioController = StreamController<Map<String, dynamic>>.broadcast();
-  Stream<Map<String, dynamic>> get chatRoomsStream => _chatRoomsController.stream;
+  final _voiceSignalController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _voiceAudioController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get chatRoomsStream =>
+      _chatRoomsController.stream;
   Stream<Map<String, dynamic>> get messagesStream => _messagesController.stream;
-  Stream<Map<String, dynamic>> get userSearchStream => _userSearchController.stream;
-  Stream<Map<String, dynamic>> get followStatusStream => _followStatusController.stream;
+  Stream<Map<String, dynamic>> get userSearchStream =>
+      _userSearchController.stream;
+  Stream<Map<String, dynamic>> get followStatusStream =>
+      _followStatusController.stream;
   // Public voice streams
-  Stream<Map<String, dynamic>> get voiceSignalStream => _voiceSignalController.stream;
-  Stream<Map<String, dynamic>> get voiceAudioStream => _voiceAudioController.stream;
+  Stream<Map<String, dynamic>> get voiceSignalStream =>
+      _voiceSignalController.stream;
+  Stream<Map<String, dynamic>> get voiceAudioStream =>
+      _voiceAudioController.stream;
 
   /// Add a message listener (for multiple providers to listen)
   void addMessageListener(Function(dynamic) listener) {
@@ -209,10 +220,11 @@ class UserChatWebSocket {
   bool _lastSentWasJson = false;
   bool _lastSentRetried = false;
   String? _lastSentAction;
-  final Map<String, int> _formatErrorCounts = {}; // track repeated invalid format errors per action
+  final Map<String, int> _formatErrorCounts =
+      {}; // track repeated invalid format errors per action
 
   // WebSocket URL - CHANGE THIS TO YOUR URL
-  static const String baseUrl = ApiConstants.userChatWebSocketUrl;
+  static String get baseUrl => ApiConstants.userChatWebSocketUrl;
 
   // Connect to WebSocket
   void connect({
@@ -224,7 +236,7 @@ class UserChatWebSocket {
     try {
       print('🔌 Connecting to WebSocket...');
       print('📍 UserID: $userId, Username: $username, Name: $name');
-      
+
       // Build URL with parameters
       final uri = Uri.parse(
         '$baseUrl?user_id=$userId&username=${Uri.encodeComponent(username)}&name=${Uri.encodeComponent(name)}${profileUrl != null ? '&profile_url=${Uri.encodeComponent(profileUrl)}' : ''}',
@@ -232,40 +244,41 @@ class UserChatWebSocket {
 
       print('🌐 Connecting to: $uri');
       print('🌐 WebSocket URL: $baseUrl');
-      
+
       // Create WebSocket connection
       _channel = WebSocketChannel.connect(uri);
-      
+
       // Don't set _isConnected to true immediately - wait for actual connection
       print('⏳ WebSocket channel created, waiting for connection...');
-      
+
       // Setup listener for incoming messages BEFORE connection is fully established
       _channel!.stream.listen(
         (message) {
           // Mark as connected when we receive first message
           if (!_isConnected) {
             _isConnected = true;
-            print('✅ WebSocket connected successfully! (First message received)');
+            print(
+              '✅ WebSocket connected successfully! (First message received)',
+            );
             if (onConnected != null) {
               onConnected!();
             }
           }
-          
+
           print('📨 Received raw message: $message');
-          
+
           // Parse the message to check structure
           try {
             final parsed = json.decode(message);
             print('📊 Parsed message: $parsed');
-            
+
             // Handle different event types
             _handleMessage(parsed);
-            
           } catch (e) {
             print('⚠️ Could not parse as JSON: $message');
             print('⚠️ Parse error: $e');
           }
-          
+
           // Forward message to provider (legacy support)
           if (onMessage != null) {
             onMessage!(message);
@@ -293,7 +306,8 @@ class UserChatWebSocket {
             onDisconnected!();
           }
         },
-        cancelOnError: false, // Changed to false to keep connection alive on errors
+        cancelOnError:
+            false, // Changed to false to keep connection alive on errors
       );
 
       // Set a timeout to mark as connected if no error occurs
@@ -307,12 +321,15 @@ class UserChatWebSocket {
           }
         }
       });
-      
     } catch (e, stackTrace) {
       print('❌ [UserChatWebSocket] Connection failed: $e');
       print('❌ [UserChatWebSocket] Stack trace: $stackTrace');
-      print('❌ [UserChatWebSocket] Port 8088 might not be running or server is down');
-      print('❌ [UserChatWebSocket] Check if WebSocket server is running on $baseUrl');
+      print(
+        '❌ [UserChatWebSocket] Port 8088 might not be running or server is down',
+      );
+      print(
+        '❌ [UserChatWebSocket] Check if WebSocket server is running on $baseUrl',
+      );
       _isConnected = false;
       if (onError != null) {
         onError!(e);
@@ -322,106 +339,123 @@ class UserChatWebSocket {
 
   // ========== HANDLE INCOMING MESSAGES ==========
   // ========== HANDLE INCOMING MESSAGES ==========
-void _handleMessage(Map<String, dynamic> message) {
-  // ✅ Safely get event (handle int types)
-  String? event;
-  if (message['event'] != null) {
-    event = message['event'].toString();
-  }
-  final data = message['data'];
-  
-  print('📊 Event: $event, Data: $data');
+  void _handleMessage(Map<String, dynamic> message) {
+    // ✅ Safely get event (handle int types)
+    String? event;
+    if (message['event'] != null) {
+      event = message['event'].toString();
+    }
+    final data = message['data'];
 
-  switch (event) {
-    case 'error':
-      try {
-        final errMsg = message['message']?.toString() ?? '';
-        print('❗ Server error event: $errMsg');
-        // If server complains about message format, retry the last sent payload as urlencoded once
-        if (errMsg.toLowerCase().contains('invalid message format')) {
-          final actionKey = _lastSentAction ?? _lastSentNormalized?['action']?.toString() ?? 'unknown';
-          _formatErrorCounts[actionKey] = (_formatErrorCounts[actionKey] ?? 0) + 1;
+    print('📊 Event: $event, Data: $data');
 
-          // If we haven't retried yet for this payload and we originally sent JSON, retry once as urlencoded
-          if (_lastSentNormalized != null && _lastSentWasJson == true && !_lastSentRetried && (_formatErrorCounts[actionKey] ?? 0) <= 2) {
-            print('🔁 Retrying last action as urlencoded due to server format error (action=$actionKey)');
-            _lastSentRetried = true;
-            final encoded = _lastSentNormalized!.entries.map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}').join('&');
-            print('📤 [UserChatWebSocket] Retrying (urlencoded): $encoded');
-            try {
-              _channel?.sink.add(encoded);
-              _lastSentWasJson = false;
-            } catch (e) {
-              print('❌ Retry send failed: $e');
-            }
-          } else {
-            // Too many retries or nothing to retry — suppress repeated noisy logging after a few occurrences
-            if ((_formatErrorCounts[actionKey] ?? 0) > 2) {
-              if ((_formatErrorCounts[actionKey] ?? 0) == 3) {
-                print('⚠️ Repeated Invalid message format for action=$actionKey — further retries suppressed');
+    switch (event) {
+      case 'error':
+        try {
+          final errMsg = message['message']?.toString() ?? '';
+          print('❗ Server error event: $errMsg');
+          // If server complains about message format, retry the last sent payload as urlencoded once
+          if (errMsg.toLowerCase().contains('invalid message format')) {
+            final actionKey =
+                _lastSentAction ??
+                _lastSentNormalized?['action']?.toString() ??
+                'unknown';
+            _formatErrorCounts[actionKey] =
+                (_formatErrorCounts[actionKey] ?? 0) + 1;
+
+            // If we haven't retried yet for this payload and we originally sent JSON, retry once as urlencoded
+            if (_lastSentNormalized != null &&
+                _lastSentWasJson == true &&
+                !_lastSentRetried &&
+                (_formatErrorCounts[actionKey] ?? 0) <= 2) {
+              print(
+                '🔁 Retrying last action as urlencoded due to server format error (action=$actionKey)',
+              );
+              _lastSentRetried = true;
+              final encoded = _lastSentNormalized!.entries
+                  .map(
+                    (e) =>
+                        '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}',
+                  )
+                  .join('&');
+              print('📤 [UserChatWebSocket] Retrying (urlencoded): $encoded');
+              try {
+                _channel?.sink.add(encoded);
+                _lastSentWasJson = false;
+              } catch (e) {
+                print('❌ Retry send failed: $e');
+              }
+            } else {
+              // Too many retries or nothing to retry — suppress repeated noisy logging after a few occurrences
+              if ((_formatErrorCounts[actionKey] ?? 0) > 2) {
+                if ((_formatErrorCounts[actionKey] ?? 0) == 3) {
+                  print(
+                    '⚠️ Repeated Invalid message format for action=$actionKey — further retries suppressed',
+                  );
+                }
               }
             }
           }
+        } catch (e) {
+          print('❌ Error handling server error event: $e');
         }
-      } catch (e) {
-        print('❌ Error handling server error event: $e');
-      }
-      break;
-    case 'chatrooms:list':  // ⭐ YEH ALREADY CORRECT HAI
-      print('✅ Chatrooms list received');
-      _chatRoomsController.add(data ?? {});
-      break;
-      
-    case 'chatroom:created':
-      print('✅ Chatroom created');
-      _chatRoomsController.add(data ?? {});
-      break;
-    
-    case 'messages:history':
-    case 'message:new':
-    case 'message:sent':
-    case 'user:messages':   // server may send this for get_messages response
-      print('✅ Messages received (event: $event)');
-      _messagesController.add(data ?? {});
-      break;
-    
-    case 'users:search':
-    case 'users:search_results':  // ⭐ YEH ADD KARO
-      print('✅ User search results received');
-      _userSearchController.add(data ?? {});
-      break;
-    
-    case 'follow:status':
-    case 'follow:success':
-    case 'unfollow:success':
-      print('✅ Follow status received');
-      _followStatusController.add(data ?? {});
-      break;
-    // Voice chat events
-    case 'voice:signal':
-    case 'voice:offer':
-    case 'voice:answer':
-    case 'voice:ice':
-      print('🎙️ Voice signaling event received: $event');
-      _voiceSignalController.add({'event': event, 'data': data ?? {}});
-      break;
-    case 'voice:audio':
-      // Expected: data = { user_id, chatroom_id, audio_b64, sequence, is_last }
-      print('🔊 Voice audio chunk received');
-      _voiceAudioController.add(data ?? {});
-      break;
-    case 'voice:started':
-    case 'voice:stopped':
-    case 'voice:muted':
-    case 'voice:unmuted':
-      print('🎛 Voice control event: $event');
-      _voiceSignalController.add({'event': event, 'data': data ?? {}});
-      break;
-    
-    default:
-      print('! Unknown event: $event');
+        break;
+      case 'chatrooms:list': // ⭐ YEH ALREADY CORRECT HAI
+        print('✅ Chatrooms list received');
+        _chatRoomsController.add(data ?? {});
+        break;
+
+      case 'chatroom:created':
+        print('✅ Chatroom created');
+        _chatRoomsController.add(data ?? {});
+        break;
+
+      case 'messages:history':
+      case 'message:new':
+      case 'message:sent':
+      case 'user:messages': // server may send this for get_messages response
+        print('✅ Messages received (event: $event)');
+        _messagesController.add(data ?? {});
+        break;
+
+      case 'users:search':
+      case 'users:search_results': // ⭐ YEH ADD KARO
+        print('✅ User search results received');
+        _userSearchController.add(data ?? {});
+        break;
+
+      case 'follow:status':
+      case 'follow:success':
+      case 'unfollow:success':
+        print('✅ Follow status received');
+        _followStatusController.add(data ?? {});
+        break;
+      // Voice chat events
+      case 'voice:signal':
+      case 'voice:offer':
+      case 'voice:answer':
+      case 'voice:ice':
+        print('🎙️ Voice signaling event received: $event');
+        _voiceSignalController.add({'event': event, 'data': data ?? {}});
+        break;
+      case 'voice:audio':
+        // Expected: data = { user_id, chatroom_id, audio_b64, sequence, is_last }
+        print('🔊 Voice audio chunk received');
+        _voiceAudioController.add(data ?? {});
+        break;
+      case 'voice:started':
+      case 'voice:stopped':
+      case 'voice:muted':
+      case 'voice:unmuted':
+        print('🎛 Voice control event: $event');
+        _voiceSignalController.add({'event': event, 'data': data ?? {}});
+        break;
+
+      default:
+        print('! Unknown event: $event');
+    }
   }
-}
+
   // Send message
   bool send(Map<String, dynamic> data) {
     if (_channel == null || !_isConnected) {
@@ -447,19 +481,26 @@ void _handleMessage(Map<String, dynamic> message) {
     _lastSentAction = normalized['action']?.toString();
 
     // Prefer JSON; only create_chatroom forced to urlencoded (server may expect form-style for that)
-    final Set<String> forceUrlEncodedActions = {
-      'create_chatroom',
-    };
+    final Set<String> forceUrlEncodedActions = {'create_chatroom'};
 
-    final shouldForceUrlEncoded = _lastSentAction != null && forceUrlEncodedActions.contains(_lastSentAction);
+    final shouldForceUrlEncoded =
+        _lastSentAction != null &&
+        forceUrlEncodedActions.contains(_lastSentAction);
 
     // Decide format: force urlencoded for certain chat actions, otherwise prefer JSON
     _lastSentNormalized = normalized;
     _lastSentRetried = false;
     try {
       if (shouldForceUrlEncoded) {
-        final encoded = normalized.entries.map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}').join('&');
-        print('📤 [UserChatWebSocket] Sending (urlencoded forced for $_lastSentAction): $encoded');
+        final encoded = normalized.entries
+            .map(
+              (e) =>
+                  '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}',
+            )
+            .join('&');
+        print(
+          '📤 [UserChatWebSocket] Sending (urlencoded forced for $_lastSentAction): $encoded',
+        );
         _channel!.sink.add(encoded);
         _lastSentWasJson = false;
       } else {
@@ -470,8 +511,15 @@ void _handleMessage(Map<String, dynamic> message) {
       }
     } catch (e) {
       // Last-resort: send urlencoded if JSON encoding/sending fails
-      final encoded = normalized.entries.map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}').join('&');
-      print('📤 [UserChatWebSocket] JSON send failed, falling back to urlencoded: $encoded');
+      final encoded = normalized.entries
+          .map(
+            (e) =>
+                '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value.toString())}',
+          )
+          .join('&');
+      print(
+        '📤 [UserChatWebSocket] JSON send failed, falling back to urlencoded: $encoded',
+      );
       try {
         _channel!.sink.add(encoded);
         _lastSentWasJson = false;
@@ -489,7 +537,7 @@ void _handleMessage(Map<String, dynamic> message) {
     _channel?.sink.close();
     _channel = null;
     _isConnected = false;
-    
+
     // DON'T close stream controllers - they might be reused
     // Only close them if you're sure they won't be used again
     // _chatRoomsController.close();
@@ -500,11 +548,7 @@ void _handleMessage(Map<String, dynamic> message) {
 
   // Send both user_id and user1_id so server accepts either; use JSON (WebSocket often expects JSON)
   void getChatRooms(int userId) {
-    send({
-      'action': 'get_chatrooms',
-      'user_id': userId,
-      'user1_id': userId,
-    });
+    send({'action': 'get_chatrooms', 'user_id': userId, 'user1_id': userId});
   }
 
   void createChatroom(int userId, int otherUserId) {
@@ -517,7 +561,7 @@ void _handleMessage(Map<String, dynamic> message) {
 
   void getMessages(int userId, int chatroomId, {int limit = 100}) {
     send({
-      'action': 'get_messages',  // Changed from 'get_chat_messages'
+      'action': 'get_messages', // Changed from 'get_chat_messages'
       'user_id': userId,
       'chatroom_id': chatroomId,
       'limit': limit,
@@ -537,7 +581,7 @@ void _handleMessage(Map<String, dynamic> message) {
 
   void searchUsers(int userId, String searchTerm, {int limit = 50}) {
     send({
-      'action': 'search_users',  // This one should be correct
+      'action': 'search_users', // This one should be correct
       'user_id': userId,
       'search_term': searchTerm,
       'limit': limit,
@@ -547,7 +591,7 @@ void _handleMessage(Map<String, dynamic> message) {
 
   void markAsRead(int userId, int chatroomId) {
     send({
-      'action': 'mark_as_read',  // Changed from 'mark_chat_as_read'
+      'action': 'mark_as_read', // Changed from 'mark_chat_as_read'
       'user_id': userId,
       'chatroom_id': chatroomId,
     });
@@ -557,7 +601,9 @@ void _handleMessage(Map<String, dynamic> message) {
 
   /// Follow a user
   bool followUser(int followerId, int followingId) {
-    print('👤 [UserChatWebSocket] followUser called: followerId=$followerId, followingId=$followingId');
+    print(
+      '👤 [UserChatWebSocket] followUser called: followerId=$followerId, followingId=$followingId',
+    );
     final success = send({
       'action': 'follow_user',
       'user_id': followerId,
@@ -571,7 +617,9 @@ void _handleMessage(Map<String, dynamic> message) {
 
   /// Unfollow a user
   bool unfollowUser(int followerId, int followingId) {
-    print('👤 [UserChatWebSocket] unfollowUser called: followerId=$followerId, followingId=$followingId');
+    print(
+      '👤 [UserChatWebSocket] unfollowUser called: followerId=$followerId, followingId=$followingId',
+    );
     final success = send({
       'action': 'unfollow_user',
       'user_id': followerId,
@@ -614,29 +662,17 @@ void _handleMessage(Map<String, dynamic> message) {
 
   /// Get suggested users to follow
   void getSuggestedUsers(int userId, {int limit = 10}) {
-    send({
-      'action': 'get_suggested_users',
-      'user_id': userId,
-      'limit': limit,
-    });
+    send({'action': 'get_suggested_users', 'user_id': userId, 'limit': limit});
   }
 
   /// Get online users
   void getOnlineUsers(int userId, {int limit = 50}) {
-    send({
-      'action': 'get_online_users',
-      'user_id': userId,
-      'limit': limit,
-    });
+    send({'action': 'get_online_users', 'user_id': userId, 'limit': limit});
   }
 
   /// Update user status (online, away, busy, offline)
   void updateUserStatus(int userId, String status) {
-    send({
-      'action': 'update_user_status',
-      'user_id': userId,
-      'status': status,
-    });
+    send({'action': 'update_user_status', 'user_id': userId, 'status': status});
   }
 
   // ========== VOICE CHAT API (SKELETON) ==========
@@ -648,7 +684,7 @@ void _handleMessage(Map<String, dynamic> message) {
       'data': {
         'user_id': userId.toString(),
         'chatroom_id': chatroomId.toString(),
-      }
+      },
     };
     _lastSentAction = 'voice:start';
     _lastSentNormalized = payload.map((k, v) => MapEntry(k, v));
@@ -662,7 +698,7 @@ void _handleMessage(Map<String, dynamic> message) {
       'data': {
         'user_id': userId.toString(),
         'chatroom_id': chatroomId.toString(),
-      }
+      },
     };
     _lastSentAction = 'voice:stop';
     _lastSentNormalized = payload.map((k, v) => MapEntry(k, v));
@@ -670,14 +706,18 @@ void _handleMessage(Map<String, dynamic> message) {
   }
 
   /// Send signaling message (offer/answer/ice) for WebRTC-style voice negotiation.
-  bool sendVoiceSignal(int userId, int chatroomId, Map<String, dynamic> signal) {
+  bool sendVoiceSignal(
+    int userId,
+    int chatroomId,
+    Map<String, dynamic> signal,
+  ) {
     final payload = {
       'event': 'voice:signal',
       'data': {
         'user_id': userId.toString(),
         'chatroom_id': chatroomId.toString(),
         'signal': signal,
-      }
+      },
     };
     _lastSentAction = 'voice:signal';
     _lastSentNormalized = payload.map((k, v) => MapEntry(k, v));
@@ -686,7 +726,13 @@ void _handleMessage(Map<String, dynamic> message) {
 
   /// Send an audio chunk encoded as base64. `bytes` should be raw PCM/Opus/etc.
   /// The server must know how to decode and route these chunks.
-  bool sendAudioChunk(int userId, int chatroomId, List<int> bytes, {int? sequence, bool isLast = false}) {
+  bool sendAudioChunk(
+    int userId,
+    int chatroomId,
+    List<int> bytes, {
+    int? sequence,
+    bool isLast = false,
+  }) {
     try {
       final b64 = base64.encode(bytes);
       final data = {
@@ -713,7 +759,7 @@ void _handleMessage(Map<String, dynamic> message) {
       'data': {
         'user_id': userId.toString(),
         'chatroom_id': chatroomId.toString(),
-      }
+      },
     };
     _lastSentAction = muted ? 'voice:mute' : 'voice:unmute';
     _lastSentNormalized = payload.map((k, v) => MapEntry(k, v));

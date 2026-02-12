@@ -202,12 +202,17 @@ class CountryUtils {
     'Zimbabwe': 'ZW',
   };
 
-  // ✅ Get country code from country name
+  // ✅ Get country code from country name or 2-letter code
   static String? getCountryCode(String? countryName) {
     if (countryName == null || countryName.isEmpty) {
       return null;
     }
-    return countryCodeMap[countryName];
+    final trimmed = countryName.trim();
+    // If already a 2-letter code (e.g. "PK", "US"), use it directly
+    if (trimmed.length == 2 && RegExp(r'^[A-Za-z]{2}$').hasMatch(trimmed)) {
+      return trimmed.toUpperCase();
+    }
+    return countryCodeMap[trimmed];
   }
 
   // ✅ Get country flag widget

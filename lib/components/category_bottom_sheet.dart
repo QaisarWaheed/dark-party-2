@@ -1211,48 +1211,8 @@ class _CategoryBottomSheetState extends State<CategoryBottomSheet>
                               print(
                                 '🍀 addGiftExp response for receiver $currentReceiverId: $resp',
                               );
-                              // Also trigger via Gifts WebSocket (port 8085) if connected
-                              try {
-                                final ws = GiftWebSocketService.instance;
-                                if (ws.isConnected) {
-                                  final wsSent = ws.triggerLuckySpin(
-                                    senderId: widget.senderId!,
-                                    receiverId: currentReceiverId,
-                                    giftId: selectedGift.id ?? 0,
-                                    quantity: giftProvider.giftQuantity,
-                                    roomId: widget.roomId,
-                                  );
-                                  print(
-                                    '🍀 triggerLuckySpin via WS returned: $wsSent',
-                                  );
-                                } else {
-                                  print(
-                                    '⚠️ Gifts WebSocket not connected; skipping triggerLuckySpin WS call',
-                                  );
-                                }
-                              } catch (e) {
-                                print(
-                                  '⚠️ triggerLuckySpin WS call failed for receiver $currentReceiverId: $e',
-                                );
-                              }
-                              // Trigger the lucky spinner API as well
-                              try {
-                                final luckyResp =
-                                    await ApiManager.triggerLuckyGift(
-                                      senderId: widget.senderId!,
-                                      receiverId: currentReceiverId,
-                                      giftId: selectedGift.id ?? 0,
-                                      quantity: giftProvider.giftQuantity,
-                                      roomId: widget.roomId,
-                                    );
-                                print(
-                                  '🍀 triggerLuckyGift response for receiver $currentReceiverId: $luckyResp',
-                                );
-                              } catch (e) {
-                                print(
-                                  '⚠️ triggerLuckyGift failed for receiver $currentReceiverId: $e',
-                                );
-                              }
+                              // Note: Lucky spin/deduction is already done by sendGift (via lucky_gift_api).
+                              // No need to call triggerLuckyGift again - would cause double deduction.
                             }
                           } catch (e) {
                             print(

@@ -6,6 +6,7 @@ class LoadingIconButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String label;
   final String? iconPath; // Image asset path
+  final IconData? icon; // Material icon
   final Color backgroundColor;
   final Color textColor;
   final double height;
@@ -20,6 +21,7 @@ class LoadingIconButton extends StatelessWidget {
     required this.onPressed,
     required this.label,
     this.iconPath,
+    this.icon,
     this.iconColor,
     this.backgroundColor = Colors.white,
     this.textColor = Colors.black,
@@ -41,6 +43,12 @@ class LoadingIconButton extends StatelessWidget {
           strokeWidth: 2,
           color: Colors.black,
         ),
+      );
+    } else if (icon != null) {
+      iconWidget = Icon(
+        icon,
+        size: iconSize.sp,
+        color: iconColor ?? textColor,
       );
     } else if (iconPath != null) {
       iconWidget = Image.asset(

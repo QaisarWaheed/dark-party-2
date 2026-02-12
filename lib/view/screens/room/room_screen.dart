@@ -46,6 +46,7 @@ import 'package:shaheen_star_app/view/screens/room/room_bootom_sheet_content.dar
 import 'package:shaheen_star_app/view/screens/room/room_ranking_screen.dart';
 import 'package:shaheen_star_app/view/screens/user_chat/user_chat_list_screen.dart';
 import 'package:shaheen_star_app/view/screens/widget/cached_network_image.dart';
+import 'package:shaheen_star_app/view/widgets/user_id_display.dart';
 
 import '../../../controller/api_manager/number_format.dart';
 import '../../../controller/provider/store_provider.dart';
@@ -87,7 +88,8 @@ class _LuckyGiftSnapshot {
   });
 }
 
-class _RoomScreenState extends State<RoomScreen> {
+class _RoomScreenState extends State<RoomScreen>
+    with SingleTickerProviderStateMixin {
   bool _showAnnouncement = true;
 
   // Lucky Gift Banner State
@@ -98,6 +100,8 @@ class _RoomScreenState extends State<RoomScreen> {
   String _luckySenderName = 'User';
   Timer? _luckyBannerTimer;
   final Map<String, _LuckyGiftSnapshot> _luckyGiftSnapshots = {};
+  AnimationController? _luckyBannerAnimationController;
+  Animation<Offset>? _luckyBannerSlideAnimation;
 
   final TextEditingController _messageController = TextEditingController();
   String? totalCoins = "0.0";
@@ -120,6 +124,8 @@ class _RoomScreenState extends State<RoomScreen> {
   String? _currentGameSessionSstoken;
   // ✅ User data from get_user_info (name, avatar, balance) so game can display it in getConfig
   Map<String, dynamic>? _currentGameUserInfo;
+  // Track whether the game has already called getConfig in this session.
+  bool _hasGameRequestedConfig = false;
 
   // ✅ Gift animation overlay state
   GiftModel? _currentGiftAnimation;
@@ -443,6 +449,8 @@ try {
       }
     }
 
+    final countryCode = _resolveBaishunCountryCode();
+
     // Resolve per-game create/close endpoints from meta (fall back to localhost)
     final createGameUrl =
         (meta != null &&
@@ -488,7 +496,7 @@ try {
       if (meta != null && meta['gameId'] != null)
         q['game_id'] = meta['gameId'].toString();
       q['language'] = (meta?['language'] ?? '2').toString();
-      q['country'] = _resolveBaishunCountryCode();
+      q['country'] = countryCode;
 
       finalUrl = uri.replace(queryParameters: q).toString();
       print('[RoomScreen] ✅ Opening game with BAISHUN parameters:');
@@ -656,6 +664,7 @@ try {
                             controller.addJavaScriptHandler(
                               handlerName: 'getConfig',
                               callback: (args) async {
+                                _hasGameRequestedConfig = true;
                                 print(
                                   '[RoomScreen] ⭐⭐⭐ getConfig handler called by game! Args: $args',
                                 );
@@ -677,21 +686,35 @@ try {
                                                 '',
                                           ) ??
                                           770);
+                                final userIdStr = _normalizeBaishunUserId(
+                                  _baishunUserId ?? _databaseUserId,
+                                );
+                                final userIdInt = int.tryParse(userIdStr) ?? 0;
+                                final roomIdInt =
+                                    int.tryParse(widget.roomId.toString()) ?? 0;
+                                final gameModeInt =
+                                    int.tryParse(
+                                      _validGameModeString(meta?['gameMode']),
+                                    ) ??
+                                    2;
+                                final languageInt =
+                                    int.tryParse(
+                                      (meta?['language'] ?? '2').toString(),
+                                    ) ??
+                                    2;
+                                final token = _currentGameSessionSstoken ?? '';
                                 final config = <String, dynamic>{
                                   'appChannel': _appChannel,
                                   'appId': _appId,
-                                  'userId': _normalizeBaishunUserId(
-                                    _baishunUserId ?? _databaseUserId,
-                                  ),
+                                  'userId': userIdInt,
+                                  'uid': userIdInt,
                                   // ⚠️ MUST be the SAME code as in URL query params!
                                   'code': _currentGameSessionCode ?? '',
-                                  'roomId': widget.roomId,
+                                  'roomId': roomIdInt,
                                   // Doc 2.1: gameMode string "2" or "3" only
-                                  'gameMode': _validGameModeString(
-                                    meta?['gameMode'],
-                                  ),
-                                  'language': meta?['language'] ?? '2',
-                                  'country': _resolveBaishunCountryCode(),
+                                  'gameMode': gameModeInt,
+                                  'language': languageInt,
+                                  'country': countryCode,
                                   'gameConfig': {
                                     'sceneMode': meta?['sceneMode'] ?? 0,
                                     'designWidth': designW,
@@ -700,6 +723,8 @@ try {
                                   },
                                   'gsp': meta?['gsp'] ?? 101,
                                   'currencyIcon': meta?['currencyIcon'] ?? '',
+                                  'token': token,
+                                  'ss_token': token,
                                 };
                                 // ✅ Do not pass ss_token from client; game server must consume code once.
 
@@ -1017,19 +1042,33 @@ try {
                                               '',
                                         ) ??
                                         770);
+                              final userIdStr = _normalizeBaishunUserId(
+                                _baishunUserId ?? _databaseUserId,
+                              );
+                              final userIdInt = int.tryParse(userIdStr) ?? 0;
+                              final roomIdInt =
+                                  int.tryParse(widget.roomId.toString()) ?? 0;
+                              final gameModeInt =
+                                  int.tryParse(
+                                    _validGameModeString(meta?['gameMode']),
+                                  ) ??
+                                  2;
+                              final languageInt =
+                                  int.tryParse(
+                                    (meta?['language'] ?? '2').toString(),
+                                  ) ??
+                                  2;
+                              final token = _currentGameSessionSstoken ?? '';
                               final configData = <String, dynamic>{
                                 'appChannel': _appChannel,
                                 'appId': _appId,
-                                'userId': _normalizeBaishunUserId(
-                                  _baishunUserId ?? _databaseUserId,
-                                ),
+                                'userId': userIdInt,
+                                'uid': userIdInt,
                                 'code': _currentGameSessionCode ?? '',
-                                'roomId': widget.roomId,
-                                'gameMode': _validGameModeString(
-                                  meta?['gameMode'],
-                                ),
-                                'language': meta?['language'] ?? '2',
-                                'country': _resolveBaishunCountryCode(),
+                                'roomId': roomIdInt,
+                                'gameMode': gameModeInt,
+                                'language': languageInt,
+                                'country': countryCode,
                                 'gameConfig': {
                                   'sceneMode': meta?['sceneMode'] ?? 0,
                                   'designWidth': 750,
@@ -1038,6 +1077,8 @@ try {
                                 },
                                 'gsp': meta?['gsp'] ?? 101,
                                 'currencyIcon': meta?['currencyIcon'] ?? '',
+                                'token': token,
+                                'ss_token': token,
                               };
                               if (meta != null && meta.containsKey('gameId')) {
                                 configData['gameId'] = meta['gameId'];
@@ -1068,15 +1109,20 @@ try {
                                       configData['user_avatar'];
                                 }
                               }
-                              if (_currentGameSessionSstoken != null &&
-                                  _currentGameSessionSstoken!.isNotEmpty) {
-                                configData['ss_token'] =
-                                    _currentGameSessionSstoken;
-                                configData['uid'] = _databaseUserId ?? '';
-                              }
                               // 🎮 Log what we inject in onLoadStop (user info + ss_token)
                               _logGameConfigSent(config: configData);
                               final configJson = jsonEncode(configData);
+                              final shouldCallGetConfig =
+                                  !_hasGameRequestedConfig;
+                              final callHandlerSnippet = shouldCallGetConfig
+                                  ? """
+                                    if(window.flutter_inappwebview && window.flutter_inappwebview.callHandler){
+                                      window.flutter_inappwebview.callHandler('getConfig', {jsCallback: '__flutter_game_config_callback'});
+                                    }
+                                  """
+                                  : """
+                                    console.log('Skipping getConfig call onLoadStop (already handled).');
+                                  """;
                               await controller.evaluateJavascript(
                                 source:
                                     '''
@@ -1094,9 +1140,7 @@ try {
                                     window.__flutter_config_ready = true;
                                     try { localStorage.setItem('native_game_config', JSON.stringify(cfg)); } catch(e) {}
                                     try { window.config = cfg; window.gameConfig = cfg; } catch(e) {}
-                                    if(window.flutter_inappwebview && window.flutter_inappwebview.callHandler){
-                                      window.flutter_inappwebview.callHandler('getConfig', {jsCallback: '__flutter_game_config_callback'});
-                                    }
+                                    $callHandlerSnippet
                                     try{ if(typeof window.jsCallback === 'function') window.jsCallback(cfg); }catch(e){}
                                     try{ if(typeof window.onNativeConfig === 'function') window.onNativeConfig(cfg); }catch(e){}
                                     try{ window.dispatchEvent(new CustomEvent('nativeConfig', {detail: cfg})); }catch(e){}
@@ -2664,6 +2708,18 @@ try {
 
   @override
   void initState() {
+    _luckyBannerAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 500),
+    );
+    // Initialize with left-to-right entrance
+    _luckyBannerSlideAnimation =
+        Tween<Offset>(begin: Offset(-1.2, 0), end: Offset(0, 0)).animate(
+          CurvedAnimation(
+            parent: _luckyBannerAnimationController!,
+            curve: Curves.easeOut,
+          ),
+        );
     super.initState();
     _displayRoomName = widget.roomName;
     _displayRoomProfileUrl = widget.roomProfileUrl;
@@ -4237,17 +4293,60 @@ try {
                 reward: totalValue,
                 giftPrice: baseTotal,
                 senderName: finalSender,
+                senderUserId: senderId,
+                senderProfileUrl: senderAvatar,
               );
             }
           }
 
           // Trigger Local Room Banner (Top Patti)
+          print(
+            '[DEBUG] Calling showBroadcastOverlay for gift value: $totalValue, image: ' +
+                ((totalValue >= 100000)
+                    ? 'assets/images/broadcasting_image.png'
+                    : broadcastGiftImage),
+          );
           broadcastProvider.showBroadcastOverlay(
             senderName: finalSender,
             senderProfileUrl: senderAvatar ?? '',
             receiverName: finalReceiver,
             giftName: gift.name,
-            giftImage: broadcastGiftImage,
+            giftImage: (totalValue >= 100000)
+                ? 'assets/images/broadcasting_image.png'
+                : broadcastGiftImage,
+            giftCount: quantity,
+            giftAmount: totalValue,
+            source: 'RoomScreen',
+          );
+
+          // Update winner's balance after lucky gift reward
+          if (rewardAmount > 0 && receiverId != null && receiverId.isNotEmpty) {
+            // Call balance update API for winner
+            final balanceResponse = await ApiManager.getUserCoinsBalance(
+              userId: receiverId,
+            );
+            if (balanceResponse != null && balanceResponse.isSuccess) {
+              // Optionally update UI or provider with new balance
+              print(
+                '✅ Lucky Gift Winner Balance Updated: ${balanceResponse.balance}',
+              );
+              // You can update provider or state here if needed
+            } else {
+              print('⚠️ Failed to update winner balance after lucky gift');
+            }
+          }
+        } else if (!isLucky && totalValue >= 100000) {
+          // ✅ Show broadcast banner for non-Lucky gifts >= 100k coins
+          final broadcastProvider = Provider.of<BroadcastProvider>(
+            context,
+            listen: false,
+          );
+          broadcastProvider.showBroadcastOverlay(
+            senderName: senderName.isEmpty ? 'User' : senderName,
+            senderProfileUrl: senderAvatar ?? '',
+            receiverName: receiverName.isEmpty ? 'User' : receiverName,
+            giftName: gift.name,
+            giftImage: 'assets/images/broadcasting_image.png',
             giftCount: quantity,
             giftAmount: totalValue,
             source: 'RoomScreen',
@@ -4258,6 +4357,7 @@ try {
         if (gift.hasAnimation &&
             gift.animationFile != null &&
             gift.animationFile!.isNotEmpty) {
+          print('[DEBUG] Gift has animation file: ${gift.animationFile}');
           final animUrl = gift.animationFile!.toLowerCase();
           final isSvga =
               animUrl.endsWith('.svga') ||
@@ -4270,6 +4370,30 @@ try {
 
           if (isSvga) {
             // ✅ Always show full-screen SVGA animation overlay AFTER gift is sent
+            print(
+              '[DEBUG] Showing GiftAnimationOverlay for animation: ${gift.animationFile}',
+            );
+            // Force show animation overlay for high-value gifts
+            if (gift.hasAnimation &&
+                gift.animationFile != null &&
+                gift.animationFile!.isNotEmpty) {
+              print(
+                '[DEBUG] Forcing GiftAnimationOverlay for high-value gift: ${gift.animationFile}',
+              );
+              if (mounted) {
+                setState(() {
+                  _currentGiftAnimation = gift;
+                  _currentGiftQuantity = quantity;
+                  _currentGiftSenderName = senderName;
+                  _currentGiftSenderAvatar = senderAvatar;
+                  _currentGiftReceiverName = receiverName;
+                  _currentGiftReceiverAvatar = receiverAvatar;
+                  _currentGiftIsMultipleReceivers =
+                      data['is_multiple_receivers'] == true ||
+                      data['receiver_ids'] != null;
+                });
+              }
+            }
             print(
               "🎬 Showing SVGA animation overlay for ${gift.name} (quantity: $quantity)",
             );
@@ -4636,6 +4760,8 @@ try {
             reward: finalCoins,
             giftPrice: baseTotal,
             senderName: senderName,
+            senderUserId: senderId,
+            senderProfileUrl: senderAvatar.isNotEmpty ? senderAvatar : null,
           );
         } else {
           print(
@@ -4646,6 +4772,8 @@ try {
             reward: finalCoins,
             giftPrice: baseTotal,
             senderName: senderName,
+            senderUserId: senderId,
+            senderProfileUrl: senderAvatar.isNotEmpty ? senderAvatar : null,
           );
         }
 
@@ -4963,6 +5091,8 @@ try {
             reward: finalWinAmount,
             giftPrice: possiblePrice,
             senderName: senderName,
+            senderUserId: senderId,
+            senderProfileUrl: senderAvatar,
           );
 
           // ✅ TRIGGER TOP BANNER (PATTI) with correct multiplied amount
@@ -5064,6 +5194,26 @@ try {
         );
       }
 
+      // ✅ Show broadcast banner for non-Lucky gifts >= 100k coins
+      final totalValueForBanner = (gift.price * quantity).toDouble();
+      final isLuckyForBanner = gift.category.toLowerCase().contains('lucky');
+      if (!isLuckyForBanner && totalValueForBanner >= 100000) {
+        final broadcastProvider = Provider.of<BroadcastProvider>(
+          context,
+          listen: false,
+        );
+        broadcastProvider.showBroadcastOverlay(
+          senderName: senderName,
+          senderProfileUrl: senderAvatar ?? '',
+          receiverName: receiverName,
+          giftName: gift.name,
+          giftImage: 'assets/images/broadcasting_image.png',
+          giftCount: quantity,
+          giftAmount: totalValueForBanner,
+          source: 'RoomScreen_HighValue',
+        );
+      }
+
       // ✅ Check if gift has SVGA animation file
       if (gift.hasAnimation &&
           gift.animationFile != null &&
@@ -5110,60 +5260,43 @@ try {
             return; // Skip processing this duplicate event
           }
 
-          // ✅ For 1 lakh+ non-Lucky: broadcast only – do NOT show SVGA overlay (no green "sender send receiver" banner)
-          final totalValueForOverlay = (gift.price * quantity).toDouble();
-          final isLuckyForOverlay = gift.category.toLowerCase().contains(
-            'lucky',
+          // ✅ Show full-screen SVGA animation overlay AFTER gift is sent (including 100k+ non-Lucky gifts)
+          print(
+            "🎬 [RoomScreen] ========== SHOWING SVGA ANIMATION OVERLAY ==========",
           );
-          if (totalValueForOverlay > 100000 && !isLuckyForOverlay) {
+          print(
+            "🎬 [RoomScreen] Showing SVGA animation overlay for ${gift.name} (quantity: $quantity)",
+          );
+          print("🎬 [RoomScreen] Animation URL: ${gift.animationFile}");
+          print("🎬 [RoomScreen] Sender: $senderName (Avatar: $senderAvatar)");
+          print(
+            "🎬 [RoomScreen] Receiver: $receiverName (Avatar: $receiverAvatar)",
+          );
+          if (mounted) {
+            setState(() {
+              _currentGiftAnimation = gift;
+              _currentGiftQuantity = quantity;
+              _currentGiftSenderName = senderName;
+              _currentGiftSenderAvatar = senderAvatar;
+              _currentGiftReceiverName = receiverName;
+              _currentGiftReceiverAvatar = receiverAvatar;
+              // Check if multiple receivers
+              _currentGiftIsMultipleReceivers =
+                  data['is_multiple_receivers'] == true ||
+                  data['receiver_ids'] != null;
+            });
             print(
-              "✅ [RoomScreen] Gift ${gift.name} (${totalValueForOverlay.toStringAsFixed(0)} coins) – broadcast only, skipping SVGA overlay (no green banner)",
+              "✅ [RoomScreen] Animation overlay state updated successfully",
+            );
+            print(
+              "✅ [RoomScreen] _currentGiftAnimation: ${_currentGiftAnimation?.name}",
+            );
+            print("✅ [RoomScreen] _currentGiftQuantity: $_currentGiftQuantity");
+            print(
+              "✅ [RoomScreen] ====================================================",
             );
           } else {
-            // ✅ Show full-screen SVGA animation overlay AFTER gift is sent
-            print(
-              "🎬 [RoomScreen] ========== SHOWING SVGA ANIMATION OVERLAY ==========",
-            );
-            print(
-              "🎬 [RoomScreen] Showing SVGA animation overlay for ${gift.name} (quantity: $quantity)",
-            );
-            print("🎬 [RoomScreen] Animation URL: ${gift.animationFile}");
-            print(
-              "🎬 [RoomScreen] Sender: $senderName (Avatar: $senderAvatar)",
-            );
-            print(
-              "🎬 [RoomScreen] Receiver: $receiverName (Avatar: $receiverAvatar)",
-            );
-            if (mounted) {
-              setState(() {
-                _currentGiftAnimation = gift;
-                _currentGiftQuantity = quantity;
-                _currentGiftSenderName = senderName;
-                _currentGiftSenderAvatar = senderAvatar;
-                _currentGiftReceiverName = receiverName;
-                _currentGiftReceiverAvatar = receiverAvatar;
-                // Check if multiple receivers
-                _currentGiftIsMultipleReceivers =
-                    data['is_multiple_receivers'] == true ||
-                    data['receiver_ids'] != null;
-              });
-              print(
-                "✅ [RoomScreen] Animation overlay state updated successfully",
-              );
-              print(
-                "✅ [RoomScreen] _currentGiftAnimation: ${_currentGiftAnimation?.name}",
-              );
-              print(
-                "✅ [RoomScreen] _currentGiftQuantity: $_currentGiftQuantity",
-              );
-              print(
-                "✅ [RoomScreen] ====================================================",
-              );
-            } else {
-              print(
-                "⚠️ [RoomScreen] Widget not mounted, cannot show animation",
-              );
-            }
+            print("⚠️ [RoomScreen] Widget not mounted, cannot show animation");
           }
         } else {
           print(
@@ -5540,6 +5673,7 @@ try {
 
   @override
   void dispose() {
+    _luckyBannerAnimationController?.dispose();
     print("🗑️ Disposing RoomScreen...");
 
     // ✅ Set disposing flag to prevent setState in async operations
@@ -5621,33 +5755,29 @@ try {
     _leaveRoom(context);
   }
 
-  /// Show lucky gift result dialog with animated multiplier using new banner design
+  /// Show lucky gift congratulations in room chat (not overlay)
   void _showLuckyResultDialog({
     required int multiplier,
     required double reward,
     required double giftPrice,
     String senderName = 'User',
+    String? senderUserId,
+    String? senderProfileUrl,
   }) {
-    // Start Lucky Banner Animation (Non-modal overlay)
     if (!mounted) return;
-
-    setState(() {
-      _isLuckyBannerVisible = true;
-      _luckyMultiplier = multiplier;
-      _luckyReward = reward;
-      _luckyGiftPrice = giftPrice;
-      _luckySenderName = senderName;
-    });
-
-    // Auto-hide after 3 seconds
-    _luckyBannerTimer?.cancel();
-    _luckyBannerTimer = Timer(Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _isLuckyBannerVisible = false;
-        });
-      }
-    });
+    try {
+      final messageProvider = context.read<RoomMessageProvider>();
+      messageProvider.addLuckyCongratulationsMessage(
+        roomId: widget.roomId.toString(),
+        senderName: senderName,
+        multiplier: multiplier,
+        reward: reward,
+        senderUserId: senderUserId,
+        senderProfileUrl: senderProfileUrl,
+      );
+    } catch (e) {
+      print('⚠️ [RoomScreen] Failed to add Lucky congratulations to chat: $e');
+    }
   }
 
   void _leaveRoom(BuildContext context) async {
@@ -7064,17 +7194,26 @@ try {
 
   void openChat() {
     print('[RoomScreen] openChat() called');
-    _safeSetState(() => showInput = true);
-
-    Future.delayed(const Duration(milliseconds: 150), () {
+    setState(() {
+      _selectedMessageTab = 1; // 1: Message tab (room chat)
+      showInput = true;
+      print('[RoomScreen] showInput set to true');
+    });
+    // Request focus for the message input after the frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && !_isDisposing) {
-        FocusScope.of(context).requestFocus(_focusNode);
+        print('[RoomScreen] Requesting focus for message input');
+        _focusNode.requestFocus();
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    print(
+      '[RoomScreen] build() called, showInput: '
+      '${showInput.toString()}',
+    );
     final backbackProvider = Provider.of<BackpackProvider>(
       context,
       listen: false,
@@ -7351,6 +7490,10 @@ try {
                             receiverAvatar: _currentGiftReceiverAvatar,
                             isMultipleReceivers:
                                 _currentGiftIsMultipleReceivers,
+                            hideHeader:
+                                (_currentGiftAnimation!.price *
+                                    _currentGiftQuantity) >=
+                                100000,
                             onComplete: () {
                               setState(() {
                                 _currentGiftAnimation = null;
@@ -7364,86 +7507,7 @@ try {
                             },
                           ),
 
-                        // ✅ Lucky Gift Banner - Adjusted position
-                        // Moved further down to 0.59 to completely clear the "All" tab text
-                        if (_isLuckyBannerVisible)
-                          Positioned(
-                            top: size.height * 0.59,
-                            left: 16 * scale,
-                            width: size.width * 0.70,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0x996A4B00), // Transparent Dark Gold
-                                    Color(0x99FFE08A), // Transparent Light Gold
-                                    Color(
-                                      0x999E6B00,
-                                    ), // Transparent Medium Gold
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Color(
-                                    0xCCFFD700,
-                                  ), // Slightly transparent border
-                                  width: 1.2,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black54,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: RichText(
-                                maxLines: 3,
-                                text: TextSpan(
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black,
-                                        blurRadius: 3,
-                                        offset: Offset(1, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  children: [
-                                    const TextSpan(
-                                      text: 'Wow, congratulations to ',
-                                    ),
-                                    TextSpan(
-                                      text: _luckySenderName,
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFD700),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const TextSpan(text: ' for getting '),
-                                    TextSpan(
-                                      text: '$_luckyMultiplier times',
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFE066),
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const TextSpan(
-                                      text: ' coins back in lucky gift event',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                        // Lucky congratulations now shown in room chat, not as overlay
                       ],
                     ),
                   ),
@@ -7472,10 +7536,7 @@ try {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/room_bg.png'),
-            fit: BoxFit.cover,
-          ),
+          color: Color(0xFF1A1A1A), // Dark background fallback
         ),
         child: Center(
           child: Column(
@@ -7649,31 +7710,15 @@ try {
                         maxLines: 1,
                       ),
                       SizedBox(height: 3 * scale),
-                      // ID with green box icon
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'ID: $creatorIdRaw',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11 * scale,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          SizedBox(width: 4 * scale),
-                          Container(
-                            width: 11 * scale,
-                            height: 11 * scale,
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ],
+                      // Room owner ID - plain text, no background
+                      Text(
+                        creatorIdRaw ?? '',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11 * scale,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 5 * scale),
                       GestureDetector(
@@ -8369,13 +8414,7 @@ try {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        'ID: $displayUserId',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.black.withOpacity(0.6),
-                                        ),
-                                      ),
+                                      UserIdDisplay(userId: displayUserId),
                                       // Badges will be shown from API response
                                     ],
                                   ),
@@ -9054,8 +9093,8 @@ try {
                       // ✅ User avatar if occupied - keep SVG visible as base
                       if (isOccupied)
                         SizedBox(
-                          width: seatSize * 0.72,
-                          height: seatSize * 0.72,
+                          width: seatSize,
+                          height: seatSize,
                           child: ClipOval(
                             child: ProfileWithFrame(
                               userId:
@@ -9064,7 +9103,7 @@ try {
                                       seat.userId != '0')
                                   ? seat.userId
                                   : null,
-                              size: seatSize * 0.72,
+                              size: seatSize,
                               profileUrl: seat.profileUrl,
                               showPlaceholder: true,
                               fitToSize: true,
@@ -12107,6 +12146,60 @@ try {
       print("⚠️ ISSUE: Profile URL is missing!");
     }
     print("💬 ================================");
+
+    // ✅ Lucky congratulations message - golden background like the old overlay
+    final isLuckyCongratulations =
+        message.message.toLowerCase().contains('lucky gift event') &&
+        message.message.toLowerCase().contains('congratulations');
+    if (isLuckyCongratulations) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 280),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0x996A4B00),
+                  Color(0x99FFE08A),
+                  Color(0x999E6B00),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xCCFFD700), width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black54,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Text(
+              message.message,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                shadows: [
+                  Shadow(
+                    color: Colors.black,
+                    blurRadius: 3,
+                    offset: Offset(1, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     // ✅ System messages ke liye
     if (message.userId == 'system') {
