@@ -21,6 +21,7 @@ import 'package:shaheen_star_app/utils/country_flag_utils.dart';
 import 'package:shaheen_star_app/view/screens/home/events_screen.dart';
 import 'package:shaheen_star_app/view/screens/home/mine_screen.dart';
 import 'package:shaheen_star_app/view/screens/home/search_screen.dart';
+import 'package:shaheen_star_app/view/screens/recharge/recharge_benefits_screen.dart';
 import 'package:shaheen_star_app/view/screens/ranking/ranking_screen.dart';
 import 'package:shaheen_star_app/view/screens/room/create_room_screen.dart';
 import 'package:shaheen_star_app/view/screens/room/room_screen.dart';
@@ -831,19 +832,12 @@ class _HomeScreenState extends State<HomeScreen> {
               final banner = banners[index];
               return GestureDetector(
                 onTap: () async {
-                  if (banner.redirectUrl.isNotEmpty) {
-                    final uri = Uri.parse(banner.redirectUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } else {
-                      print(
-                        "❌ [HomeScreen] Could not launch URL: ${banner.redirectUrl}",
-                      );
-                    }
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RechargeBenefitsScreen(),
+                    ),
+                  );
                 },
                 child: SizedBox.expand(
                   child: _buildBannerImage(banner.fullImageUrl),
@@ -1013,7 +1007,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     nameColor: streamer['nameColor'] as Color?,
                     frameImage:
                         'assets/images/bg_home_rank1.png', // Ornate frame
-                    secondaryAvatars: (room.participantAvatars != null &&
+                    secondaryAvatars:
+                        (room.participantAvatars != null &&
                             room.participantAvatars!.isNotEmpty)
                         ? room.participantAvatars!
                         : [
@@ -1440,6 +1435,13 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: roomProvider.rooms.length,
               itemBuilder: (context, index) {
                 final room = roomProvider.rooms[index];
+                final totalMembers = room.participantCount ?? 0;
+                final formattedMembers = totalMembers >= 1000
+                    ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll(
+                        '.0K',
+                        'K',
+                      )
+                    : totalMembers.toString();
                 return GestureDetector(
                   onTap: () async {
                     await Navigator.push(
@@ -1474,7 +1476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? room.countryFlag!
                         : CountryFlagUtils.getFlagEmoji(null),
                     name: room.name,
-                    views: room.views?.toString() ?? room.id,
+                    views: formattedMembers,
                     showTopUp: index % 2 == 0,
                   ),
                 );
@@ -1620,7 +1622,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     nameColor: streamer['nameColor'] as Color?,
                     frameImage:
                         'assets/images/bg_home_rank1.png', // Ornate frame
-                    secondaryAvatars: (room.participantAvatars != null &&
+                    secondaryAvatars:
+                        (room.participantAvatars != null &&
                             room.participantAvatars!.isNotEmpty)
                         ? room.participantAvatars!
                         : [

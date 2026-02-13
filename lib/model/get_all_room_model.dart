@@ -1,5 +1,3 @@
-
-
 // class GetAllRoomModel {
 //   final String id;
 //   final String name;
@@ -26,7 +24,6 @@
 //   }
 // }
 
-
 class GetAllRoomModel {
   final String id;
   final String name;
@@ -35,11 +32,12 @@ class GetAllRoomModel {
   final String? creatorId;
   final String? roomProfile;
   final String? creatorProfileUrl; // ✅ Store creator's profile URL
-  final   String? countryFlag;
+  final String? countryFlag;
   final int? views;
   final String roomCode; // ✅ NAYA FIELD ADD KARO
   final int? participantCount; // ✅ Total members currently in room
-  final List<String>? participantAvatars; // ✅ Avatars of users currently joined in room
+  final List<String>?
+  participantAvatars; // ✅ Avatars of users currently joined in room
 
   GetAllRoomModel({
     required this.id,
@@ -48,7 +46,7 @@ class GetAllRoomModel {
     required this.creatorName,
     this.creatorId,
     this.roomProfile,
-    this.creatorProfileUrl, 
+    this.creatorProfileUrl,
     this.countryFlag,
     this.views,
     required this.roomCode, // ✅ NAYA FIELD ADD KARO
@@ -60,7 +58,7 @@ class GetAllRoomModel {
     // Debug: Print all available keys to see what fields backend returns
     print("🔍 Room JSON keys: ${json.keys.toList()}");
     print("🔍 Room JSON: $json");
-    
+
     // Try multiple possible field names for views
     int? viewsValue;
     if (json["views"] != null) {
@@ -96,42 +94,53 @@ class GetAllRoomModel {
         print("⚠️ Error parsing participant_count: $e");
       }
     }
-    
+
     print("🔍 Parsed views value: $viewsValue");
-    
-    // ✅ Parse participant_count for total members
+
+    List<String>? participantAvatarsValue;
+    if (json["participant_avatars"] != null &&
+        json["participant_avatars"] is List) {
+      participantAvatarsValue = (json["participant_avatars"] as List)
+          .map((e) => e?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    // ✅ Use participant_avatars length as the true count (actual users with profiles)
+    // The API's participant_count field is unreliable/stale
     int? participantCountValue;
-    if (json["participant_count"] != null) {
+
+    if (participantAvatarsValue != null && participantAvatarsValue.isNotEmpty) {
+      // ✅ PREFER: Count actual avatars (real users)
+      participantCountValue = participantAvatarsValue.length;
+      print(
+        "✅ Using participant_avatars length as count: $participantCountValue",
+      );
+    } else if (json["participant_count"] != null) {
       try {
         participantCountValue = int.parse(json["participant_count"].toString());
-        print("✅ Parsed participant_count (total members): $participantCountValue");
+        print(
+          "⚠️ participant_avatars empty, falling back to participant_count: $participantCountValue",
+        );
       } catch (e) {
         print("⚠️ Error parsing participant_count: $e");
       }
     } else if (json["total_members"] != null) {
       try {
         participantCountValue = int.parse(json["total_members"].toString());
-        print("✅ Parsed total_members: $participantCountValue");
+        print("⚠️ Using total_members: $participantCountValue");
       } catch (e) {
         print("⚠️ Error parsing total_members: $e");
       }
     } else if (json["current_members"] != null) {
       try {
         participantCountValue = int.parse(json["current_members"].toString());
-        print("✅ Parsed current_members: $participantCountValue");
+        print("⚠️ Using current_members: $participantCountValue");
       } catch (e) {
         print("⚠️ Error parsing current_members: $e");
       }
     }
 
-    List<String>? participantAvatarsValue;
-    if (json["participant_avatars"] != null && json["participant_avatars"] is List) {
-      participantAvatarsValue = (json["participant_avatars"] as List)
-          .map((e) => e?.toString() ?? '')
-          .where((s) => s.isNotEmpty)
-          .toList();
-    }
-    
     return GetAllRoomModel(
       id: json["id"].toString(),
       name: json["name"] ?? "",
@@ -143,7 +152,8 @@ class GetAllRoomModel {
       countryFlag: json["country_flag"] ?? "",
       views: viewsValue ?? 0,
       roomCode: json["room_code"] ?? "", // ✅ YEH ADD KARO
-      participantCount: participantCountValue ?? 0, // ✅ Total members currently in room
+      participantCount:
+          participantCountValue ?? 0, // ✅ Total members currently in room
       participantAvatars: participantAvatarsValue,
     );
   }
