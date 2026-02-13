@@ -42,7 +42,10 @@ class _SearchScreenState extends State<SearchScreen>
       _loadUsers();
       _loadRooms();
       // Initialize follow provider
-      final followProvider = Provider.of<UserFollowProvider>(context, listen: false);
+      final followProvider = Provider.of<UserFollowProvider>(
+        context,
+        listen: false,
+      );
       followProvider.initialize();
     });
   }
@@ -74,7 +77,8 @@ class _SearchScreenState extends State<SearchScreen>
       setState(() {
         _allUsers = users.cast<Map<String, dynamic>>();
         // ✅ Start with empty filtered list - only show when searching
-        _filteredUsers = []; // Empty by default, will be populated when user searches
+        _filteredUsers =
+            []; // Empty by default, will be populated when user searches
         _isLoadingUsers = false;
       });
     } catch (e) {
@@ -93,13 +97,17 @@ class _SearchScreenState extends State<SearchScreen>
     });
 
     try {
-      final roomProvider = Provider.of<GetAllRoomProvider>(context, listen: false);
+      final roomProvider = Provider.of<GetAllRoomProvider>(
+        context,
+        listen: false,
+      );
       await roomProvider.fetchRooms();
       if (!mounted) return;
       setState(() {
         _allRooms = roomProvider.rooms;
         // ✅ Start with empty filtered list - only show when searching
-        _filteredRooms = []; // Empty by default, will be populated when user searches
+        _filteredRooms =
+            []; // Empty by default, will be populated when user searches
         _isLoadingRooms = false;
       });
     } catch (e) {
@@ -112,22 +120,22 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   void _filterUsers() {
-
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-        print(_searchQuery);
+    print(_searchQuery);
     // ✅ Only show results when user searches (not empty by default)
     if (_searchQuery.isEmpty) {
       _filteredUsers = [];
       return;
     }
-    
-   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-        print(_allUsers);
+
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+    print(_allUsers);
     _filteredUsers = _allUsers.where((user) {
       // ✅ Search by user ID
-      final userId = (user['id']?.toString() ?? 
-                     user['user_id']?.toString() ?? '').toLowerCase();
-      
+      final userId =
+          (user['id']?.toString() ?? user['user_id']?.toString() ?? '')
+              .toLowerCase();
+
       return userId.contains(_searchQuery);
     }).toList();
   }
@@ -143,7 +151,7 @@ class _SearchScreenState extends State<SearchScreen>
       // ✅ Search by room ID
       final roomId = room.id.toLowerCase();
       final roomCode = room.roomCode.toLowerCase();
-      
+
       return roomId.contains(_searchQuery) || roomCode.contains(_searchQuery);
     }).toList();
   }
@@ -256,11 +264,17 @@ class _SearchScreenState extends State<SearchScreen>
               children: [
                 // Custom AppBar with search
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: AppColors.black),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.black,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       Expanded(
@@ -275,17 +289,27 @@ class _SearchScreenState extends State<SearchScreen>
                             autofocus: true,
                             decoration: InputDecoration(
                               hintText: 'Search by ID...',
-                              hintStyle: TextStyle(color: AppColors.grey, fontSize: 14, fontWeight: FontWeight.w500),
+                              hintStyle: TextStyle(
+                                color: AppColors.grey,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                               suffixIcon: _searchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: Icon(Icons.clear, color: AppColors.grey),
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: AppColors.grey,
+                                      ),
                                       onPressed: () {
                                         _searchController.clear();
                                       },
                                     )
                                   : null,
                               border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
                             ),
                             style: const TextStyle(fontSize: 14),
                           ),
@@ -296,9 +320,9 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
                 // Tab Bar
                 Container(
-                   child: TabBar(
+                  child: TabBar(
                     controller: _tabController,
-                     labelColor: AppColors.primaryColor,
+                    labelColor: AppColors.primaryColor,
                     unselectedLabelColor: Colors.black,
                     indicatorColor: AppColors.primaryColor,
                     indicatorWeight: 3,
@@ -314,10 +338,7 @@ class _SearchScreenState extends State<SearchScreen>
                     color: Colors.white,
                     child: TabBarView(
                       controller: _tabController,
-                      children: [
-                        _buildUsersTab(),
-                        _buildRoomsTab(),
-                      ],
+                      children: [_buildUsersTab(), _buildRoomsTab()],
                     ),
                   ),
                 ),
@@ -373,33 +394,40 @@ class _SearchScreenState extends State<SearchScreen>
       itemBuilder: (context, index) {
         final user = _filteredUsers[index];
         final name = user['name']?.toString() ?? 'Unknown';
-         final country = user['country']?.toString() ?? '';
-        final profileUrl = _normalizeProfileUrl(user['profile_url']?.toString());
+        final country = user['country']?.toString() ?? '';
+        final profileUrl = _normalizeProfileUrl(
+          user['profile_url']?.toString(),
+        );
         final countryFlag = country.isNotEmpty
             ? CountryFlagUtils.getFlagEmoji(country)
             : '🌍';
 
         return Card(
-           elevation: 1,
+          elevation: 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.primaryColor.withOpacity(0.2), width: 1),
+            side: BorderSide(
+              color: AppColors.primaryColor.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: ListTile(
             tileColor: AppColors.bgColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: Builder(
               builder: (context) {
                 // ✅ Get userId for ProfileWithFrame
-                final userId = user['id']?.toString() ?? 
-                             user['user_id']?.toString() ?? 
-                             '';
-                
+                final userId =
+                    user['id']?.toString() ?? user['user_id']?.toString() ?? '';
+
                 // ✅ Use ProfileWithFrame to show purchased item frames
                 return ProfileWithFrame(
                   size: 40, // radius 28 * 2 = 56
                   profileUrl: profileUrl.startsWith('http') ? profileUrl : null,
-               
+
                   userId: userId.isNotEmpty ? userId : null,
                 );
               },
@@ -418,23 +446,17 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  countryFlag,
-                  style: const TextStyle(fontSize: 20),
-                ),
+                Text(countryFlag, style: const TextStyle(fontSize: 20)),
               ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-         if (country.isNotEmpty) ...[
+                if (country.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     country,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ],
@@ -444,8 +466,10 @@ class _SearchScreenState extends State<SearchScreen>
               children: [
                 Consumer<UserFollowProvider>(
                   builder: (context, followProvider, _) {
-                    final userId = user['id']?.toString() ?? 
-                                 user['user_id']?.toString() ?? '';
+                    final userId =
+                        user['id']?.toString() ??
+                        user['user_id']?.toString() ??
+                        '';
                     final targetUserId = int.tryParse(userId);
                     if (targetUserId == null || userId.isEmpty) {
                       return Icon(
@@ -456,7 +480,9 @@ class _SearchScreenState extends State<SearchScreen>
                     }
                     return FollowButton(
                       targetUserId: targetUserId,
-                      initialIsFollowing: followProvider.isFollowing(targetUserId),
+                      initialIsFollowing: followProvider.isFollowing(
+                        targetUserId,
+                      ),
                       width: 85,
                       height: 32,
                       fontSize: 12,
@@ -473,9 +499,8 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             onTap: () {
               // ✅ Pass selected user's ID to DetailedProfileScreen
-              final userId = user['id']?.toString() ?? 
-                           user['user_id']?.toString() ?? 
-                           '';
+              final userId =
+                  user['id']?.toString() ?? user['user_id']?.toString() ?? '';
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -537,7 +562,13 @@ class _SearchScreenState extends State<SearchScreen>
         final roomCreatorId = room.creatorId;
         final roomName = room.name;
         final topic = room.topic;
-        final views = room.views?.toString() ?? room.id;
+        final totalMembers = room.participantCount ?? 0;
+        final formattedMembers = totalMembers >= 1000
+            ? '${(totalMembers / 1000).toStringAsFixed(1)}K'.replaceAll(
+                '.0K',
+                'K',
+              )
+            : totalMembers.toString();
         final profileUrl = _normalizeRoomProfileUrl(room.roomProfile);
         final countryFlag = room.countryFlag?.isNotEmpty == true
             ? room.countryFlag!
@@ -548,18 +579,23 @@ class _SearchScreenState extends State<SearchScreen>
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.primaryColor.withOpacity(0.2), width: 1),
+            side: BorderSide(
+              color: AppColors.primaryColor.withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: InkWell(
             onTap: () async {
               final avatarFile = _getRoomAvatarFile(room.roomProfile);
-              final networkUrl = profileUrl.startsWith('http') ? profileUrl : null;
-              
+              final networkUrl = profileUrl.startsWith('http')
+                  ? profileUrl
+                  : null;
+
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RoomScreen(
-                    roomCreatorId:roomCreatorId!,
+                    roomCreatorId: roomCreatorId!,
                     roomName: roomName,
                     roomId: room.id,
                     topic: topic,
@@ -604,12 +640,13 @@ class _SearchScreenState extends State<SearchScreen>
                             width: 70,
                             height: 70,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Image.asset(
-                              'assets/images/person.png',
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
+                                  'assets/images/person.png',
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                ),
                           ),
                   ),
                   const SizedBox(width: 16),
@@ -652,10 +689,14 @@ class _SearchScreenState extends State<SearchScreen>
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.visibility, size: 14, color: Colors.grey[600]),
+                            Icon(
+                              Icons.visibility,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              views,
+                              formattedMembers,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -680,4 +721,3 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 }
-
