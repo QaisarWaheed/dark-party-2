@@ -33,6 +33,7 @@ import 'package:shaheen_star_app/view/screens/profile/personal_info_screen.dart'
 import 'package:shaheen_star_app/view/screens/store/store_screen.dart';
 import 'package:shaheen_star_app/view/screens/widget/robust_animated_image.dart';
 import 'package:shaheen_star_app/view/widgets/user_id_display.dart';
+import 'package:shaheen_star_app/view/screens/recharge/recharge_benefits_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 // removed unused withdraw provider import
@@ -75,8 +76,10 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
     super.initState();
     _idCheckTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
-      Provider.of<ProfileUpdateProvider>(context, listen: false)
-          .checkUserIdChange();
+      Provider.of<ProfileUpdateProvider>(
+        context,
+        listen: false,
+      ).checkUserIdChange();
     });
   }
 
@@ -435,27 +438,44 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                     builder: (context, agencyProvider, _) {
                       final userAgency = agencyProvider.userAgency;
                       if (userAgency != null) {
-                        final agencyName = userAgency['agency_name'] ?? userAgency['name'] ?? '';
-                        final agencyCode = userAgency['agency_code'] ?? userAgency['id'] ?? '';
-                        final agencyLogo = userAgency['logo_url'] ?? userAgency['logo'] ?? '';
-                        final ownerCountry = userAgency['owner_country'] ?? userAgency['country'] ?? '';
-                        
+                        final agencyName =
+                            userAgency['agency_name'] ??
+                            userAgency['name'] ??
+                            '';
+                        final agencyCode =
+                            userAgency['agency_code'] ?? userAgency['id'] ?? '';
+                        final agencyLogo =
+                            userAgency['logo_url'] ?? userAgency['logo'] ?? '';
+                        final ownerCountry =
+                            userAgency['owner_country'] ??
+                            userAgency['country'] ??
+                            '';
+
                         return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           height: 80,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             image: const DecorationImage(
-                              image: AssetImage('assets/images/agency_search.png'),
+                              image: AssetImage(
+                                'assets/images/agency_search.png',
+                              ),
                               fit: BoxFit.cover,
                             ),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             child: Row(
                               children: [
                                 // Agency Logo
-                                if (agencyLogo.isNotEmpty && agencyLogo.startsWith('http'))
+                                if (agencyLogo.isNotEmpty &&
+                                    agencyLogo.startsWith('http'))
                                   ClipOval(
                                     child: Image.network(
                                       agencyLogo,
@@ -469,7 +489,11 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                           color: Colors.grey[300],
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                        child: const Icon(
+                                          Icons.business,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
                                       ),
                                     ),
                                   )
@@ -481,13 +505,18 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                       color: Colors.grey[300],
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.business, color: Colors.white, size: 30),
+                                    child: const Icon(
+                                      Icons.business,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
                                   ),
                                 const SizedBox(width: 12),
                                 // Agency Info
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -511,7 +540,8 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                                 color: Colors.white70,
                                               ),
                                             ),
-                                          if (ownerCountry.isNotEmpty && agencyCode.isNotEmpty)
+                                          if (ownerCountry.isNotEmpty &&
+                                              agencyCode.isNotEmpty)
                                             const SizedBox(width: 8),
                                           if (agencyCode.isNotEmpty)
                                             Text(
@@ -528,12 +558,19 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                 ),
                                 // Arrow or Action
                                 IconButton(
-                                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+                                  icon: const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                   onPressed: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => AgencyProfileCenterScreen(agency: userAgency),
+                                        builder: (_) =>
+                                            AgencyProfileCenterScreen(
+                                              agency: userAgency,
+                                            ),
                                       ),
                                     );
                                   },
@@ -647,18 +684,13 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                     final banner = banners[index];
                                     return GestureDetector(
                                       onTap: () async {
-                                        if (banner.redirectUrl.isNotEmpty) {
-                                          final uri = Uri.parse(
-                                            banner.redirectUrl,
-                                          );
-                                          if (await canLaunchUrl(uri)) {
-                                            await launchUrl(
-                                              uri,
-                                              mode: LaunchMode
-                                                  .externalApplication,
-                                            );
-                                          }
-                                        }
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const RechargeBenefitsScreen(),
+                                          ),
+                                        );
                                       },
                                       child: LayoutBuilder(
                                         builder: (context, constraints) {
@@ -1043,17 +1075,25 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                             );
                             final userAgency = agencyProvider.userAgency;
                             if (userAgency != null) {
-                              final agency = Map<String, dynamic>.from(userAgency);
-                              final currentUserId = agencyProvider.currentUserId;
-                              final ownerId = agency['user_id'] ?? agency['owner_id'];
-                              final isOwner = currentUserId != null &&
+                              final agency = Map<String, dynamic>.from(
+                                userAgency,
+                              );
+                              final currentUserId =
+                                  agencyProvider.currentUserId;
+                              final ownerId =
+                                  agency['user_id'] ?? agency['owner_id'];
+                              final isOwner =
+                                  currentUserId != null &&
                                   ownerId != null &&
-                                  currentUserId.toString() == ownerId.toString();
+                                  currentUserId.toString() ==
+                                      ownerId.toString();
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => isOwner
-                                      ? AgencyProfileCenterScreen(agency: agency)
+                                      ? AgencyProfileCenterScreen(
+                                          agency: agency,
+                                        )
                                       : MyAgencyViewScreen(agency: agency),
                                 ),
                               );
@@ -1233,17 +1273,25 @@ class _ProfileScreenState extends State<ProfileScreen> with RouteAware {
                                     );
                                 final userAgency = agencyProvider.userAgency;
                                 if (userAgency != null) {
-                                  final agency = Map<String, dynamic>.from(userAgency);
-                                  final currentUserId = agencyProvider.currentUserId;
-                                  final ownerId = agency['user_id'] ?? agency['owner_id'];
-                                  final isOwner = currentUserId != null &&
+                                  final agency = Map<String, dynamic>.from(
+                                    userAgency,
+                                  );
+                                  final currentUserId =
+                                      agencyProvider.currentUserId;
+                                  final ownerId =
+                                      agency['user_id'] ?? agency['owner_id'];
+                                  final isOwner =
+                                      currentUserId != null &&
                                       ownerId != null &&
-                                      currentUserId.toString() == ownerId.toString();
+                                      currentUserId.toString() ==
+                                          ownerId.toString();
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => isOwner
-                                          ? AgencyProfileCenterScreen(agency: agency)
+                                          ? AgencyProfileCenterScreen(
+                                              agency: agency,
+                                            )
                                           : MyAgencyViewScreen(agency: agency),
                                     ),
                                   );
